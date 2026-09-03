@@ -213,7 +213,7 @@ export default function SpecCheckApp() {
             <p className="mt-4 text-center text-sm text-destructive">{error}</p>
           ) : null}
 
-          <div className="mt-10 rounded-2xl border border-border bg-card p-2 shadow-[0_1px_2px_rgba(0,0,0,0.04),0_12px_40px_-24px_rgba(0,0,0,0.4)] transition-colors focus-within:border-foreground/40">
+          <div className="relative z-10 mt-10 rounded-2xl border border-border bg-card p-2 shadow-[0_1px_2px_rgba(0,0,0,0.04),0_12px_40px_-24px_rgba(0,0,0,0.4)] transition-colors focus-within:border-foreground/40">
             <textarea
               value={text}
               onChange={(e) => setText(e.target.value)}
@@ -244,16 +244,25 @@ export default function SpecCheckApp() {
               />
             ) : null}
 
-            <div className="flex items-center justify-between gap-2 px-2 pb-1">
+            <div className="relative z-10 flex items-center justify-between gap-2 px-2 pb-1">
               <div className="flex flex-wrap items-center gap-1">
-                <button
-                  onClick={() => fileRef.current?.click()}
-                  className="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
-                >
+                <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground">
                   <Paperclip className="size-4" />
                   Прикрепить файл
-                </button>
+                  <input
+                    ref={fileRef}
+                    type="file"
+                    accept=".pdf,.txt,.md,.doc,.docx,application/pdf"
+                    className="sr-only"
+                    onChange={(e) => {
+                      const f = e.target.files?.[0];
+                      if (f) setFile(f);
+                      e.target.value = "";
+                    }}
+                  />
+                </label>
                 <button
+                  type="button"
                   onClick={() => {
                     setDraftRules(rules);
                     setRulesOpen((v) => !v);
@@ -264,18 +273,8 @@ export default function SpecCheckApp() {
                   Обновить 8 обязательных правил
                 </button>
               </div>
-              <input
-                ref={fileRef}
-                type="file"
-                accept=".pdf,.txt,.md,.doc,.docx,application/pdf"
-                className="hidden"
-                onChange={(e) => {
-                  const f = e.target.files?.[0];
-                  if (f) setFile(f);
-                  e.target.value = "";
-                }}
-              />
               <button
+                type="button"
                 onClick={() => void analyze()}
                 disabled={!canSend || stage === "loading"}
                 className={cn(
@@ -312,9 +311,12 @@ export default function SpecCheckApp() {
 
       <aside
         className={cn(
-          "flex h-screen shrink-0 flex-col overflow-hidden border-l border-border bg-background transition-all duration-500 ease-out",
-          open ? "sticky top-0 w-full lg:flex-1" : "w-0 border-l-0",
+          "flex h-screen min-w-0 shrink-0 flex-col overflow-hidden border-l border-border bg-background transition-all duration-500 ease-out",
+          open
+            ? "sticky top-0 w-full lg:flex-1"
+            : "pointer-events-none w-0 border-l-0",
         )}
+        aria-hidden={!open}
       >
         {open && stats ? (
           <>
