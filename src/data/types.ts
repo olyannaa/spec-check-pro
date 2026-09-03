@@ -1,5 +1,7 @@
 export type Severity = 3 | 2 | 1;
 
+export type CommentStatus = "accepted" | "rejected" | null;
+
 export type Block =
   | { type: "h2" | "h3" | "p" | "li"; text: string }
   | { type: "table"; head: string[]; rows: string[][] };
