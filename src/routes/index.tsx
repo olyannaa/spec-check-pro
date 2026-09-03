@@ -62,6 +62,11 @@ function Index() {
     };
   }, [doc]);
 
+  const rejectedIds = useMemo(
+    () => new Set(Object.entries(statuses).filter(([, s]) => s === "rejected").map(([id]) => id)),
+    [statuses],
+  );
+
   const canSend = text.trim().length > 0 || !!fileName;
 
   function analyze() {
@@ -72,9 +77,14 @@ function Index() {
       setDoc(picked);
       setBlocks(picked.blocks.map((b) => ({ ...b })));
       setActiveId(null);
+      setStatuses({});
       setEditing(false);
       setStage("result");
     }, 1600);
+  }
+
+  function setStatus(id: string, status: CommentStatus) {
+    setStatuses((prev) => ({ ...prev, [id]: status }));
   }
 
   function select(id: string) {
@@ -266,6 +276,7 @@ function Index() {
                   blocks={blocks}
                   comments={doc.comments}
                   activeId={activeId}
+                  rejectedIds={rejectedIds}
                   onSelect={select}
                   editing={editing}
                   onEdit={(i, next) =>
@@ -277,7 +288,13 @@ function Index() {
                 <p className="mb-3 px-1 font-mono text-[11px] tracking-wide text-muted-foreground uppercase">
                   Комментарии
                 </p>
-                <CommentsRail comments={doc.comments} activeId={activeId} onSelect={select} />
+                <CommentsRail
+                  comments={doc.comments}
+                  activeId={activeId}
+                  statuses={statuses}
+                  onSelect={select}
+                  onStatus={setStatus}
+                />
               </div>
             </div>
           </>
