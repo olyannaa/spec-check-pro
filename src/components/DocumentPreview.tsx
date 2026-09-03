@@ -143,6 +143,8 @@ export function DocumentPreview({
                             loc={{ block: i, row: -1, col: ci }}
                             activeId={activeId}
                             onSelect={onSelect}
+                            rejectedIds={rejectedIds}
+            rejectedIds={rejectedIds}
                           />
                         )}
                       </th>
@@ -171,6 +173,9 @@ export function DocumentPreview({
                               loc={{ block: i, row: ri, col: ci }}
                               activeId={activeId}
                               onSelect={onSelect}
+                              rejectedIds={rejectedIds}
+                            rejectedIds={rejectedIds}
+            rejectedIds={rejectedIds}
                             />
                           )}
                         </td>
@@ -206,6 +211,7 @@ export function DocumentPreview({
             loc={{ block: i }}
             activeId={activeId}
             onSelect={onSelect}
+            rejectedIds={rejectedIds}
           />
         );
 
