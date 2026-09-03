@@ -34,12 +34,14 @@ function HighlightedText({
   comments,
   loc,
   activeId,
+  rejectedIds,
   onSelect,
 }: {
   text: string;
   comments: Comment[];
   loc: Loc;
   activeId: string | null;
+  rejectedIds: Set<string>;
   onSelect: (id: string) => void;
 }) {
   const anchors = anchorsFor(comments, loc);
@@ -62,6 +64,7 @@ function HighlightedText({
     if (r.start > cursor) parts.push(<Fragment key={`t${i}`}>{text.slice(cursor, r.start)}</Fragment>);
     const active = activeId === r.comment.id;
     const dimmed = activeId !== null && !active;
+    const rejected = rejectedIds.has(r.comment.id);
     parts.push(
       <mark
         key={`m${i}`}
@@ -70,9 +73,10 @@ function HighlightedText({
         className={cn(
           "cursor-pointer rounded-[3px] px-0.5 text-foreground transition-all",
           markClass[r.comment.severity],
-          active && markActiveClass[r.comment.severity],
-          active && "ring-2 ring-foreground/60 ring-offset-1",
+          active && !rejected && markActiveClass[r.comment.severity],
+          active && !rejected && "ring-2 ring-foreground/60 ring-offset-1",
           dimmed && "opacity-45",
+          rejected && "opacity-20 saturate-50",
         )}
         title={`Комментарий ${r.comment.n}`}
       >
