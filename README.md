@@ -46,6 +46,7 @@ OPENAI_MODEL=qwen/qwen3.8-27b
 ## Документы кейса
 
 - [docs/BRIEF.md](docs/BRIEF.md)
+- [docs/BACKEND.md](docs/BACKEND.md)
 - [docs/TEMPLATE.md](docs/TEMPLATE.md)
 - [docs/CHECKLIST.md](docs/CHECKLIST.md)
 - [docs/SAMPLE-FINDINGS.md](docs/SAMPLE-FINDINGS.md)
