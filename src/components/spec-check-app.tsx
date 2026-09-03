@@ -273,15 +273,15 @@ export default function SpecCheckApp() {
                 />
               ) : null}
 
-              <div className="flex items-center justify-between gap-2 px-2 pb-1">
+              <div className="relative z-10 flex items-center justify-between gap-2 px-2 pb-1">
                 <div className="flex flex-wrap items-center gap-1">
-                  <label className="relative inline-flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground">
-                    <Paperclip className="size-4" />
-                    Прикрепить файл
+                  <label className="relative isolate inline-flex cursor-pointer items-center gap-2 overflow-hidden rounded-lg px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground">
+                    <Paperclip className="pointer-events-none size-4" />
+                    <span className="pointer-events-none">Прикрепить файл</span>
                     <input
                       type="file"
                       accept=".pdf,.txt,.md,.doc,.docx,application/pdf"
-                      className="absolute inset-0 z-10 cursor-pointer opacity-0"
+                      className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
                       onChange={(e) => {
                         const f = e.target.files?.[0];
                         if (f) setFile(f);
@@ -295,7 +295,7 @@ export default function SpecCheckApp() {
                       setDraftRules(rules);
                       setRulesOpen((v) => !v);
                     }}
-                    className="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+                    className="relative z-10 inline-flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
                   >
                     <Shield className="size-4" />
                     Правила проверки
@@ -500,7 +500,7 @@ function RulesEditor({
   return (
     <div
       ref={scrollerRef}
-      className="mx-2 mb-3 max-h-[28rem] overflow-y-auto rounded-xl border border-border bg-secondary/40 p-3"
+      className="relative z-10 mx-2 mb-3 max-h-[28rem] overflow-y-auto rounded-xl border border-border bg-secondary/40 p-3"
     >
       <div className="mb-2 flex items-center justify-between gap-2">
         <p className="text-sm font-medium">
