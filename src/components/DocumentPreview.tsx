@@ -144,7 +144,7 @@ export function DocumentPreview({
                               value={c}
                               onChange={(e) => {
                                 const rows = block.rows.map((r) => [...r]);
-                                rows[ri][ci] = e.target.value;
+                                rows[ri]![ci] = e.target.value;
                                 onEdit(i, { ...block, rows });
                               }}
                               className="w-full bg-transparent outline-none"

@@ -39,9 +39,9 @@ export async function downloadDocx(title: string, blocks: Block[]) {
           width: { size: total, type: WidthType.DXA },
           columnWidths: widths,
           rows: [
-            new TableRow({ children: block.head.map((h, i) => cell(h, widths[i], true)) }),
+            new TableRow({ children: block.head.map((h, i) => cell(h, widths[i]!, true)) }),
             ...block.rows.map(
-              (r) => new TableRow({ children: r.map((c, i) => cell(c, widths[i])) }),
+              (r) => new TableRow({ children: r.map((c, i) => cell(c, widths[i]!)) }),
             ),
           ],
         }),
