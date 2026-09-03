@@ -1,4 +1,4 @@
-import type { Block, CommentStatus, DocComment } from "./doc-view";
+import { parseBlocks, type Block, type CommentStatus, type DocComment } from "./doc-view";
 import { ROLE_LABELS } from "./types";
 
 const SEVERITY_LABEL: Record<DocComment["severity"], string> = {
@@ -26,6 +26,7 @@ export type ExportReport = {
   counts: { high: number; medium: number; low: number; total: number };
   comments: ExportComment[];
   document: string;
+  blocks: Block[];
 };
 
 export function blocksToMarkdown(blocks: Block[]): string {
@@ -81,7 +82,13 @@ export function buildExportReport(opts: {
     },
     comments,
     document: blocksToMarkdown(opts.blocks),
+    blocks: opts.blocks,
   };
+}
+
+export function reportBlocks(report: ExportReport): Block[] {
+  if (report.blocks?.length) return report.blocks;
+  return parseBlocks(report.document ?? "");
 }
 
 export function fileStem(title: string): string {
