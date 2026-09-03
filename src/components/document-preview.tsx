@@ -201,6 +201,7 @@ export function DocumentPreview({
               onChange={(e) => onEdit(i, { ...block, text: e.target.value })}
               className={cn(
                 "my-1 w-full resize-none rounded-md border border-border bg-secondary/40 px-3 py-2 outline-none focus:border-foreground",
+                block.type === "h1" && "text-2xl font-semibold",
                 block.type === "h2" && "text-lg font-semibold",
                 block.type === "h3" && "font-semibold",
               )}
@@ -218,6 +219,13 @@ export function DocumentPreview({
             rejectedIds={rejectedIds}
           />
         );
+        if (block.type === "h1") {
+          return (
+            <h1 key={i} className="mt-2 mb-4 text-2xl font-semibold tracking-tight">
+              {inner}
+            </h1>
+          );
+        }
         if (block.type === "h2") {
           return (
             <h2 key={i} className="mt-8 mb-3 text-lg font-semibold tracking-tight">
@@ -235,7 +243,9 @@ export function DocumentPreview({
         if (block.type === "li") {
           return (
             <p key={i} className="my-1 flex gap-2 pl-1">
-              <span className="text-muted-foreground">—</span>
+              <span className="w-5 shrink-0 text-muted-foreground">
+                {block.ordered && block.n ? `${block.n}.` : "•"}
+              </span>
               <span>{inner}</span>
             </p>
           );

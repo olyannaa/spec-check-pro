@@ -1,15 +1,10 @@
-import { extractText, getDocumentProxy } from "unpdf";
+import { formatSpecText } from "@/lib/format-doc";
+import { pdfBufferToMarkdown } from "@/lib/pdf-layout";
 import { reviewDocument } from "@/lib/review";
 import { DEFAULT_RULES } from "@/lib/rules";
 import type { Rule } from "@/lib/types";
 
 export const runtime = "nodejs";
-
-async function pdfToText(buffer: Buffer): Promise<string> {
-  const pdf = await getDocumentProxy(new Uint8Array(buffer));
-  const { text } = await extractText(pdf, { mergePages: true });
-  return Array.isArray(text) ? text.join("\n") : text;
-}
 
 export async function POST(req: Request) {
   const contentType = req.headers.get("content-type") ?? "";
@@ -32,7 +27,7 @@ export async function POST(req: Request) {
       fileName = file.name;
       const buf = Buffer.from(await file.arrayBuffer());
       if (file.name.toLowerCase().endsWith(".pdf")) {
-        text = await pdfToText(buf);
+        text = await pdfBufferToMarkdown(buf);
       } else {
         text = buf.toString("utf8");
       }
@@ -51,6 +46,8 @@ export async function POST(req: Request) {
     fileName = body.fileName ?? "";
     if (body.rules?.length) rules = body.rules;
   }
+
+  text = formatSpecText(text);
 
   if (!text.trim()) {
     return Response.json(

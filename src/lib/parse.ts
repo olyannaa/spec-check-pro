@@ -1,3 +1,5 @@
+import { isSectionHeading } from "./headings";
+
 export type ParsedDoc = {
   raw: string;
   body: string;
@@ -29,15 +31,17 @@ export function parseDocument(text: string): ParsedDoc {
 
   for (const line of lines) {
     const heading = line.match(/^#{1,3}\s+(.+)$/);
-    const numbered = line.match(/^(\d+)\.\s+([А-ЯA-Z].{3,80})$/);
     if (heading) {
       flush();
       current = heading[1].trim();
       continue;
     }
-    if (numbered && numbered[2].length < 80) {
+    if (isSectionHeading(line) && !line.trim().startsWith("|")) {
       flush();
-      current = numbered[2].trim();
+      current = line
+        .trim()
+        .replace(/^\d+\.\s+/, "")
+        .replace(/:$/, "");
       continue;
     }
     buf.push(line);

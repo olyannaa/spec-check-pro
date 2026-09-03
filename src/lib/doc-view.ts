@@ -1,10 +1,12 @@
+import { headingLevel, isSectionHeading } from "./headings";
 import type { Finding, Severity as FindingSeverity } from "./types";
 
 export type MarkLevel = 3 | 2 | 1;
 export type CommentStatus = "accepted" | "rejected" | null;
 
 export type Block =
-  | { type: "h2" | "h3" | "p" | "li"; text: string }
+  | { type: "h1" | "h2" | "h3" | "p"; text: string }
+  | { type: "li"; text: string; ordered?: boolean; n?: number }
   | { type: "table"; head: string[]; rows: string[][] };
 
 export type Anchor = {
@@ -49,8 +51,22 @@ export function parseBlocks(text: string): Block[] {
       i += 1;
       continue;
     }
-    if (line.startsWith("## ") || line.startsWith("# ")) {
-      blocks.push({ type: "h2", text: line.replace(/^#+\s+/, "").trim() });
+    if (line.startsWith("## ")) {
+      blocks.push({ type: "h2", text: line.slice(3).trim() });
+      i += 1;
+      continue;
+    }
+    if (line.startsWith("# ")) {
+      blocks.push({ type: "h1", text: line.slice(2).trim() });
+      i += 1;
+      continue;
+    }
+    const plainLevel = headingLevel(line);
+    if (plainLevel) {
+      blocks.push({
+        type: plainLevel === 3 ? "h3" : "h2",
+        text: line.trim().replace(/:$/, ""),
+      });
       i += 1;
       continue;
     }
@@ -73,24 +89,26 @@ export function parseBlocks(text: string): Block[] {
       }
       continue;
     }
-    if (/^\s*[-•*]\s+/.test(line) || /^\s*\d+\.\s+/.test(line)) {
+    const ordered = line.match(/^\s*(\d+)\.\s+(.*)$/);
+    if (/^\s*[-•*]\s+/.test(line) || (ordered && !isSectionHeading(line))) {
       blocks.push({
         type: "li",
-        text: line.replace(/^\s*(?:[-•*]|\d+\.)\s+/, "").trim(),
+        text: line.replace(/^\s*(?:[-•*]|\d+\.)\s+/, "").trim(),
+        ordered: Boolean(ordered),
+        n: ordered ? Number(ordered[1]) : undefined,
       });
       i += 1;
       continue;
     }
     const parts = [line.trim()];
     i += 1;
-    while (
-      i < lines.length &&
-      (lines[i] ?? "").trim() &&
-      !(lines[i] ?? "").startsWith("#") &&
-      !(lines[i] ?? "").trim().startsWith("|") &&
-      !/^\s*[-•*]\s+/.test(lines[i] ?? "")
-    ) {
-      parts.push((lines[i] ?? "").trim());
+    while (i < lines.length) {
+      const next = lines[i] ?? "";
+      if (!next.trim()) break;
+      if (next.startsWith("#") || headingLevel(next)) break;
+      if (next.trim().startsWith("|")) break;
+      if (/^\s*[-•*]\s+/.test(next) || /^\s*\d+\.\s+/.test(next)) break;
+      parts.push(next.trim());
       i += 1;
     }
     blocks.push({ type: "p", text: parts.join(" ") });
