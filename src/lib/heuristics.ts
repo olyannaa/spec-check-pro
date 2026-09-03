@@ -24,14 +24,15 @@ export function runHeuristics(text: string, rules: Rule[]): Finding[] {
     out.push(finding(item, out.length + 1));
   };
 
-  checkSerialization(doc, rules, push);
-  checkCatalog(doc, rules, push);
-  checkNullable(doc, rules, push);
-  checkFilters(doc, rules, push);
-  checkTemplate(doc, rules, push);
-  checkKafkaCluster(doc, rules, push);
-  checkHdfs(doc, rules, push);
-  checkDictionaries(doc, rules, push);
+  if (ruleMeta(rules, "1")) checkSerialization(doc, rules, push);
+  if (ruleMeta(rules, "2")) checkCatalog(doc, rules, push);
+  if (ruleMeta(rules, "3")) checkNullable(doc, rules, push);
+  if (ruleMeta(rules, "4")) checkFilters(doc, rules, push);
+  if (ruleMeta(rules, "5")) checkTemplate(doc, rules, push);
+  if (ruleMeta(rules, "6")) checkKafkaCluster(doc, rules, push);
+  if (ruleMeta(rules, "7")) checkHdfs(doc, rules, push);
+  if (ruleMeta(rules, "8")) checkDictionaries(doc, rules, push);
+  checkCustomRules(doc, rules, push);
   checkContradictions(doc, push);
   checkFieldLogic(doc, push);
 
@@ -430,6 +431,74 @@ function checkFieldLogic(
       quote: "Шаг 5. Запись в CDM",
       why: "Шаг записи в CDM объявлен и не заполнен: нет условий overwrite, партиции и проверки дублей.",
       ask: "Описать, как именно пишем месяц в CDM и что происходит при повторном прогоне.",
+    });
+  }
+}
+
+const STOP_WORDS = new Set([
+  "должен",
+  "должна",
+  "должно",
+  "должны",
+  "если",
+  "или",
+  "для",
+  "при",
+  "этот",
+  "этого",
+  "также",
+  "быть",
+  "есть",
+  "нет",
+  "что",
+  "как",
+  "the",
+  "and",
+  "for",
+  "with",
+  "that",
+  "this",
+  "from",
+  "каждый",
+  "каждого",
+  "явно",
+  "указан",
+  "указать",
+  "описание",
+  "должно",
+  "наличие",
+]);
+
+function lookForTokens(lookFor: string): string[] {
+  return lookFor
+    .toLowerCase()
+    .split(/[^a-zа-яё0-9]+/i)
+    .filter((w) => w.length >= 5 && !STOP_WORDS.has(w))
+    .slice(0, 8);
+}
+
+function checkCustomRules(
+  doc: ParsedDoc,
+  rules: Rule[],
+  push: (f: Omit<Finding, "id">) => void,
+) {
+  for (const rule of rules) {
+    if (/^[1-8]$/.test(rule.id)) continue;
+    const title = rule.title.trim();
+    const lookFor = rule.lookFor.trim();
+    if (!title && !lookFor) continue;
+    const tokens = lookForTokens(lookFor || title);
+    const covered =
+      tokens.length === 0 ? false : hasAny(doc.body, tokens);
+    if (covered) continue;
+    push({
+      severity: "medium",
+      ruleId: rule.id,
+      role: "template",
+      section: title || "Дополнительное правило",
+      quote: "раздел отсутствует",
+      why: `${title || "Дополнительное правило"}: в ТЗ не видно того, что требует правило${lookFor ? ` («${snippet(lookFor, 140)}»)` : ""}.`,
+      ask: rule.askIfMissing.trim() || "Дополнить ТЗ по этому правилу.",
     });
   }
 }

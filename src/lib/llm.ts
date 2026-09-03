@@ -62,14 +62,20 @@ function sleep(ms: number) {
   return new Promise((r) => setTimeout(r, ms));
 }
 
+function customRuleIds(rules: Rule[]): string[] {
+  return rules.filter((r) => !/^[1-8]$/.test(r.id)).map((r) => r.id);
+}
+
 function compactRules(rules: Rule[], primaryIds: string[]): string {
   const primary = rules.filter((r) => primaryIds.includes(r.id));
   const rest = rules.filter((r) => !primaryIds.includes(r.id));
   const main = primary
-    .map((r) => `${r.id}. ${r.title}: ${r.lookFor}`)
+    .map((r) => `${r.id}. ${r.title}: ${r.lookFor} Вопрос: ${r.askIfMissing}`)
     .join("\n");
   const other = rest.map((r) => `${r.id} ${r.title}`).join("; ");
-  return `${main}\nЕщё правила (не повторяй чужие находки): ${other}`;
+  return other
+    ? `${main}\nЕщё правила (не повторяй чужие находки): ${other}`
+    : main;
 }
 
 function knownBlock(findings: Finding[]): string {
@@ -175,7 +181,7 @@ ${compactRules(opts.rules, opts.pass.ruleIds)}
 ${knownBlock(opts.already)}
 
 Верни JSON:
-{"findings":[{"severity":"high"|"medium"|"low","ruleId":"1".."8" или нет,"section":"","quote":"","why":"","ask":""}]}
+{"findings":[{"severity":"high"|"medium"|"low","ruleId":"id из списка правил или нет","section":"","quote":"","why":"","ask":""}]}
 
 ТЗ:
 """${sliceForRole(opts.document, opts.pass, DOC_SLICE)}"""`;
@@ -275,10 +281,15 @@ export async function enrichWithQwen(
   let merged = [...seed];
   let okCalls = 0;
   const rolesRan: ReviewRole[] = [];
+  const extraIds = customRuleIds(rules);
 
   try {
     for (let i = 0; i < ROLE_PASSES.length; i++) {
-      const pass = ROLE_PASSES[i]!;
+      const base = ROLE_PASSES[i]!;
+      const pass =
+        base.role === "template" && extraIds.length
+          ? { ...base, ruleIds: [...base.ruleIds, ...extraIds] }
+          : base;
       const { findings: extra, ok } = await callRole({
         apiKey,
         baseUrl,

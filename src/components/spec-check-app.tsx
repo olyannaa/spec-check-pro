@@ -10,7 +10,7 @@ import {
   type DocComment,
 } from "@/lib/doc-view";
 import { buildExportReport, fileStem } from "@/lib/export-report";
-import { DEFAULT_RULES } from "@/lib/rules";
+import { blankRule, DEFAULT_RULES, nextRuleId } from "@/lib/rules";
 import { SAMPLE_DOCS } from "@/lib/sample-meta";
 import { ROLE_LABELS, type ReviewResult, type ReviewRole, type Rule } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -22,10 +22,13 @@ import {
   Paperclip,
   Pencil,
   Check,
+  Plus,
+  RotateCcw,
   Shield,
+  Trash2,
   X,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 type Stage = "input" | "loading" | "result";
 
@@ -164,14 +167,18 @@ export default function SpecCheckApp() {
   }
 
   function saveRules() {
-    const next = draftRules.map((r) => ({
-      ...r,
-      title: r.title.trim(),
-      lookFor: r.lookFor.trim(),
-      askIfMissing: r.askIfMissing.trim(),
-    }));
-    setRules(next);
-    localStorage.setItem("speccheck-rules", JSON.stringify(next));
+    const next = draftRules
+      .map((r) => ({
+        ...r,
+        title: r.title.trim(),
+        lookFor: r.lookFor.trim(),
+        askIfMissing: r.askIfMissing.trim(),
+      }))
+      .filter((r) => r.title || r.lookFor);
+    const stored = next.length ? next : DEFAULT_RULES;
+    setRules(stored);
+    setDraftRules(stored);
+    localStorage.setItem("speccheck-rules", JSON.stringify(stored));
     setRulesOpen(false);
   }
 
@@ -303,7 +310,10 @@ export default function SpecCheckApp() {
                     className="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
                   >
                     <Shield className="size-4" />
-                    Обновить 8 обязательных правил
+                    Правила проверки
+                    <span className="font-mono text-[11px] text-muted-foreground">
+                      {rules.length}
+                    </span>
                   </button>
                 </div>
                 <button
@@ -480,6 +490,14 @@ export default function SpecCheckApp() {
   );
 }
 
+function rulesCountLabel(n: number): string {
+  const n10 = n % 10;
+  const n100 = n % 100;
+  if (n10 === 1 && n100 !== 11) return `${n} правило`;
+  if (n10 >= 2 && n10 <= 4 && (n100 < 12 || n100 > 14)) return `${n} правила`;
+  return `${n} правил`;
+}
+
 function RulesEditor({
   draft,
   onChange,
@@ -491,54 +509,109 @@ function RulesEditor({
   onCancel: () => void;
   onSave: () => void;
 }) {
+  const scrollerRef = useRef<HTMLDivElement>(null);
   function patch(id: string, field: keyof Rule, value: string) {
     onChange(draft.map((r) => (r.id === id ? { ...r, [field]: value } : r)));
   }
+  function addRule() {
+    onChange([...draft, blankRule(nextRuleId(draft))]);
+    requestAnimationFrame(() => {
+      const node = scrollerRef.current;
+      node?.scrollTo({ top: node.scrollHeight, behavior: "smooth" });
+    });
+  }
+  function removeRule(id: string) {
+    onChange(draft.filter((r) => r.id !== id));
+  }
   return (
-    <div className="mx-2 mb-3 max-h-72 overflow-y-auto rounded-xl border border-border bg-secondary/40 p-3">
-      <div className="mb-2 flex items-center justify-between">
-        <p className="text-sm font-medium">8 обязательных правил</p>
+    <div
+      ref={scrollerRef}
+      className="mx-2 mb-3 max-h-[28rem] overflow-y-auto rounded-xl border border-border bg-secondary/40 p-3"
+    >
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <p className="text-sm font-medium">
+          Правила проверки
+          <span className="ml-2 font-normal text-muted-foreground">
+            {rulesCountLabel(draft.length)}
+          </span>
+        </p>
         <button type="button" onClick={onCancel} className="text-muted-foreground">
           <X className="size-4" />
         </button>
       </div>
       <div className="space-y-2">
+        {draft.length === 0 ? (
+          <p className="rounded-lg border border-dashed border-border px-3 py-6 text-center text-sm text-muted-foreground">
+            Правил нет. Добавьте своё или верните обязательные восемь.
+          </p>
+        ) : null}
         {draft.map((rule) => (
           <div key={rule.id} className="rounded-lg border border-border bg-background p-2">
-            <p className="mb-1 font-mono text-[10px] text-muted-foreground">
-              Правило {rule.id}
-            </p>
+            <div className="mb-1 flex items-center justify-between gap-2">
+              <p className="font-mono text-[10px] text-muted-foreground">
+                Правило {rule.id}
+              </p>
+              <button
+                type="button"
+                onClick={() => removeRule(rule.id)}
+                className="inline-flex size-7 items-center justify-center rounded-md text-muted-foreground hover:bg-secondary hover:text-destructive"
+                aria-label={`Удалить правило ${rule.id}`}
+              >
+                <Trash2 className="size-3.5" />
+              </button>
+            </div>
             <input
               value={rule.title}
               onChange={(e) => patch(rule.id, "title", e.target.value)}
+              placeholder="Название правила"
               className="mb-1 w-full rounded-md border border-border px-2 py-1 text-sm outline-none"
             />
             <textarea
               value={rule.lookFor}
               onChange={(e) => patch(rule.id, "lookFor", e.target.value)}
+              placeholder="Что искать в ТЗ"
               rows={2}
               className="mb-1 w-full rounded-md border border-border px-2 py-1 text-[12px] outline-none"
             />
             <textarea
               value={rule.askIfMissing}
               onChange={(e) => patch(rule.id, "askIfMissing", e.target.value)}
+              placeholder="Какой вопрос задать, если этого нет"
               rows={2}
               className="w-full rounded-md border border-border px-2 py-1 text-[12px] outline-none"
             />
           </div>
         ))}
-      </div>
-      <div className="mt-2 flex justify-end gap-2">
-        <button type="button" onClick={onCancel} className="px-2 py-1 text-sm text-muted-foreground">
-          Отмена
-        </button>
         <button
           type="button"
-          onClick={onSave}
-          className="rounded-md bg-destructive px-3 py-1.5 text-sm text-destructive-foreground"
+          onClick={addRule}
+          className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-dashed border-border px-3 py-2 text-sm text-muted-foreground hover:border-foreground hover:text-foreground"
         >
-          Сохранить
+          <Plus className="size-4" />
+          Добавить правило
         </button>
+      </div>
+      <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+        <button
+          type="button"
+          onClick={() => onChange(DEFAULT_RULES)}
+          className="inline-flex items-center gap-1.5 px-2 py-1 text-sm text-muted-foreground hover:text-foreground"
+        >
+          <RotateCcw className="size-3.5" />
+          Вернуть 8 обязательных
+        </button>
+        <div className="flex justify-end gap-2">
+          <button type="button" onClick={onCancel} className="px-2 py-1 text-sm text-muted-foreground">
+            Отмена
+          </button>
+          <button
+            type="button"
+            onClick={onSave}
+            className="rounded-md bg-destructive px-3 py-1.5 text-sm text-destructive-foreground"
+          >
+            Сохранить
+          </button>
+        </div>
       </div>
     </div>
   );

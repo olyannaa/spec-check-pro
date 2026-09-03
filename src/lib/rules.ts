@@ -79,3 +79,19 @@ export const TEMPLATE_SECTIONS = [
   "DDL",
   "FAQ",
 ];
+
+export function nextRuleId(rules: Rule[]): string {
+  const used = new Set(rules.map((r) => r.id));
+  let n = 9;
+  while (used.has(String(n))) n += 1;
+  return String(n);
+}
+
+export function blankRule(id: string): Rule {
+  return {
+    id,
+    title: "",
+    lookFor: "",
+    askIfMissing: "",
+  };
+}
