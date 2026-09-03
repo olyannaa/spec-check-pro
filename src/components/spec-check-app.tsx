@@ -11,7 +11,6 @@ import {
 } from "@/lib/doc-view";
 import { buildExportReport, fileStem } from "@/lib/export-report";
 import { blankRule, DEFAULT_RULES, nextRuleId } from "@/lib/rules";
-import { SAMPLE_DOCS } from "@/lib/sample-meta";
 import { ROLE_LABELS, type ReviewResult, type ReviewRole, type Rule } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import {
@@ -96,17 +95,15 @@ export default function SpecCheckApp() {
         }`
       : null;
 
-  async function analyze(override?: { text?: string; file?: File | null; title?: string }) {
-    const nextText = override?.text ?? text;
-    const nextFile = override?.file === undefined ? file : override.file;
-    if (!nextText.trim() && !nextFile) return;
+  async function analyze() {
+    if (!text.trim() && !file) return;
     setStage("loading");
     setError(null);
     try {
       const form = new FormData();
       form.set("rules", JSON.stringify(rules));
-      if (nextText.trim()) form.set("text", nextText);
-      if (nextFile) form.set("file", nextFile);
+      if (text.trim()) form.set("text", text);
+      if (file) form.set("file", file);
       const res = await fetch("/api/review", { method: "POST", body: form });
       const data = (await res.json()) as ReviewResult & {
         error?: string;
@@ -118,14 +115,14 @@ export default function SpecCheckApp() {
         setStage("input");
         return;
       }
-      const body = data.text?.trim() || nextText.trim();
+      const body = data.text?.trim() || text.trim();
       const parsed = parseBlocks(body);
       setBlocks(parsed);
       setComments(commentsFromFindings(parsed, data.findings));
       setSummary(data.summary);
       setLlmCalls(data.llmCalls ?? 0);
       setRolesRan(data.rolesRan ?? []);
-      setTitle(override?.title ?? nextFile?.name ?? "Техническое задание");
+      setTitle(file?.name ?? "Техническое задание");
       setActiveId(null);
       setStatuses({});
       setEditing(false);
@@ -134,15 +131,6 @@ export default function SpecCheckApp() {
       setError("Сеть или сервер не ответили.");
       setStage("input");
     }
-  }
-
-  async function loadSample(id: string, sampleTitle: string) {
-    const res = await fetch(`/api/samples?id=${id}`);
-    const data = (await res.json()) as { text?: string };
-    if (!data.text) return;
-    setText(data.text);
-    setFile(null);
-    await analyze({ text: data.text, file: null, title: sampleTitle });
   }
 
   function select(id: string) {
@@ -335,20 +323,6 @@ export default function SpecCheckApp() {
                   )}
                 </button>
               </div>
-            </div>
-
-            <div className="mt-6 flex flex-wrap justify-center gap-2">
-              {SAMPLE_DOCS.map((s) => (
-                <button
-                  key={s.id}
-                  type="button"
-                  onClick={() => void loadSample(s.id, s.title)}
-                  disabled={stage === "loading"}
-                  className="rounded-full border border-border px-3 py-1.5 text-[12px] text-muted-foreground hover:border-foreground hover:text-foreground disabled:opacity-50"
-                >
-                  {s.title}
-                </button>
-              ))}
             </div>
           </section>
         </>
