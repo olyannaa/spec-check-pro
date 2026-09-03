@@ -228,8 +228,6 @@ export default function SpecCheckApp() {
             </h1>
             <p className="mt-4 text-center text-[15px] text-muted-foreground text-balance">
               Прикрепите документ (Word или PDF) либо вставьте текст технического задания.
-              Одна модель смотрит ТЗ тремя ролями: шаблон, разработчик и QA.
-              Замечания — HIGH, MEDIUM и LOW. Текст сам не переписываю.
             </p>
 
             {error ? (
