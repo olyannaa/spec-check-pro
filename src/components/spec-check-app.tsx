@@ -11,7 +11,7 @@ import {
 } from "@/lib/doc-view";
 import { DEFAULT_RULES } from "@/lib/rules";
 import { SAMPLE_DOCS } from "@/lib/sample-meta";
-import type { ReviewResult, Rule } from "@/lib/types";
+import { ROLE_LABELS, type ReviewResult, type ReviewRole, type Rule } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import {
   ArrowUp,
@@ -44,6 +44,8 @@ export default function SpecCheckApp() {
   const [rules, setRules] = useState<Rule[]>(DEFAULT_RULES);
   const [rulesOpen, setRulesOpen] = useState(false);
   const [draftRules, setDraftRules] = useState<Rule[]>(DEFAULT_RULES);
+  const [llmCalls, setLlmCalls] = useState(0);
+  const [rolesRan, setRolesRan] = useState<ReviewRole[]>([]);
 
   useEffect(() => {
     const saved = localStorage.getItem("speccheck-rules");
@@ -81,6 +83,14 @@ export default function SpecCheckApp() {
 
   const canSend = text.trim().length > 0 || !!file;
   const open = stage === "result";
+  const roleLine =
+    llmCalls > 0
+      ? `Модель: ${llmCalls} из 3 ролей${
+          rolesRan.length
+            ? ` (${rolesRan.map((r) => ROLE_LABELS[r]).join(" → ")})`
+            : ""
+        }`
+      : null;
 
   async function analyze(override?: { text?: string; file?: File | null; title?: string }) {
     const nextText = override?.text ?? text;
@@ -110,6 +120,8 @@ export default function SpecCheckApp() {
       setBlocks(parsed);
       setComments(commentsFromFindings(parsed, data.findings));
       setSummary(data.summary);
+      setLlmCalls(data.llmCalls ?? 0);
+      setRolesRan(data.rolesRan ?? []);
       setTitle(override?.title ?? nextFile?.name ?? "Техническое задание");
       setActiveId(null);
       setStatuses({});
@@ -147,6 +159,8 @@ export default function SpecCheckApp() {
     setActiveId(null);
     setEditing(false);
     setRulesOpen(false);
+    setLlmCalls(0);
+    setRolesRan([]);
   }
 
   function saveRules() {
@@ -191,11 +205,17 @@ export default function SpecCheckApp() {
             </h1>
             <p className="mt-4 text-center text-[15px] text-muted-foreground text-balance">
               Прикрепите документ (Word или PDF) либо вставьте текст технического задания.
+              Одна модель смотрит ТЗ тремя ролями: шаблон, разработчик и QA.
               Замечания — HIGH, MEDIUM и LOW. Текст сам не переписываю.
             </p>
 
             {error ? (
               <p className="mt-4 text-center text-sm text-destructive">{error}</p>
+            ) : null}
+            {stage === "loading" ? (
+              <p className="mt-4 text-center text-sm text-muted-foreground">
+                Три запроса одной модели: шаблон → разработчик → QA
+              </p>
             ) : null}
 
             <div className="mt-10 rounded-2xl border border-border bg-card p-2 shadow-[0_1px_2px_rgba(0,0,0,0.04),0_12px_40px_-24px_rgba(0,0,0,0.4)]">
@@ -285,7 +305,8 @@ export default function SpecCheckApp() {
                   key={s.id}
                   type="button"
                   onClick={() => void loadSample(s.id, s.title)}
-                  className="rounded-full border border-border px-3 py-1.5 text-[12px] text-muted-foreground hover:border-foreground hover:text-foreground"
+                  disabled={stage === "loading"}
+                  className="rounded-full border border-border px-3 py-1.5 text-[12px] text-muted-foreground hover:border-foreground hover:text-foreground disabled:opacity-50"
                 >
                   {s.title}
                 </button>
@@ -318,7 +339,7 @@ export default function SpecCheckApp() {
                 <div className="no-print flex flex-wrap items-center gap-3 border-b border-border px-6 py-3">
                   <div className="mr-auto min-w-0">
                     <p className="truncate text-sm font-semibold">{title}</p>
-                    <p className="mt-0.5 flex items-center gap-3 text-[12px] text-muted-foreground">
+                    <p className="mt-0.5 flex flex-wrap items-center gap-3 text-[12px] text-muted-foreground">
                       <span>Замечаний: {stats.total}</span>
                       <span className="inline-flex items-center gap-1">
                         <i className="size-2 rounded-full bg-crit" />
@@ -332,6 +353,7 @@ export default function SpecCheckApp() {
                         <i className="size-2 rounded-full bg-note" />
                         LOW {stats.note}
                       </span>
+                      {roleLine ? <span>{roleLine}</span> : null}
                     </p>
                     {summary ? (
                       <p className="mt-1 max-w-xl text-[12px] text-muted-foreground">
@@ -378,7 +400,7 @@ export default function SpecCheckApp() {
                   </button>
                 </div>
 
-                <div className="print-area flex min-h-0 flex-1 overflow-hidden">
+                <div className="print-area flex min-h-0 flex-1 flex-col overflow-hidden lg:flex-row">
                   <div className="min-w-0 flex-1 overflow-y-auto">
                     <DocumentPreview
                       title={title}
@@ -393,7 +415,7 @@ export default function SpecCheckApp() {
                       }
                     />
                   </div>
-                  <div className="no-print hidden w-[24rem] shrink-0 overflow-y-auto border-l border-border bg-secondary/30 p-4 lg:block">
+                  <div className="no-print max-h-[42vh] shrink-0 overflow-y-auto border-t border-border bg-secondary/30 p-4 lg:max-h-none lg:w-[24rem] lg:border-l lg:border-t-0">
                     <p className="mb-3 px-1 font-mono text-[11px] tracking-wide text-muted-foreground uppercase">
                       Комментарии
                     </p>

@@ -5,6 +5,7 @@ import { DEFAULT_RULES } from "@/lib/rules";
 import type { Rule } from "@/lib/types";
 
 export const runtime = "nodejs";
+export const maxDuration = 180;
 
 export async function POST(req: Request) {
   const contentType = req.headers.get("content-type") ?? "";

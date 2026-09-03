@@ -2,6 +2,12 @@ export type Severity = "high" | "medium" | "low";
 export type ReviewRole = "template" | "developer" | "qa";
 export type Verdict = "ready" | "needs_work" | "not_ready";
 
+export const ROLE_LABELS: Record<ReviewRole, string> = {
+  template: "Шаблон",
+  developer: "Разработчик",
+  qa: "QA",
+};
+
 export type Rule = {
   id: string;
   title: string;
@@ -27,6 +33,8 @@ export type ReviewResult = {
   counts: { high: number; medium: number; low: number };
   model: string;
   usedLlm: boolean;
+  llmCalls: number;
+  rolesRan: ReviewRole[];
 };
 
 export type ChatRole = "user" | "assistant" | "system";

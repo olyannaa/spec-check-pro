@@ -1,5 +1,5 @@
 import { headingLevel, isSectionHeading } from "./headings";
-import type { Finding, Severity as FindingSeverity } from "./types";
+import type { Finding, ReviewRole, Severity as FindingSeverity } from "./types";
 
 export type MarkLevel = 3 | 2 | 1;
 export type CommentStatus = "accepted" | "rejected" | null;
@@ -26,6 +26,7 @@ export type DocComment = {
   why: string;
   ask: string;
   ruleId?: string;
+  role: ReviewRole;
   anchors: Anchor[];
 };
 
@@ -163,6 +164,7 @@ export function commentsFromFindings(
       why: f.why,
       ask: f.ask,
       ruleId: f.ruleId,
+      role: f.role,
       anchors: anchors.slice(0, 3),
     };
   });

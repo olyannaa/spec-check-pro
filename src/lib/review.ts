@@ -8,6 +8,10 @@ export async function reviewDocument(
   rules: Rule[] = DEFAULT_RULES,
 ): Promise<ReviewResult> {
   const seed = runHeuristics(text, rules);
-  const { findings, used, model } = await enrichWithQwen(text, rules, seed);
-  return finalizeReview(findings, used, model);
+  const { findings, used, model, llmCalls, rolesRan } = await enrichWithQwen(
+    text,
+    rules,
+    seed,
+  );
+  return finalizeReview(findings, used, model, llmCalls, rolesRan);
 }

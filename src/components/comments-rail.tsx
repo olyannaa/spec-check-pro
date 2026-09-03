@@ -1,5 +1,6 @@
 import { Check, Undo2 } from "lucide-react";
 import type { CommentStatus, DocComment, MarkLevel } from "@/lib/doc-view";
+import { ROLE_LABELS } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 const meta: Record<MarkLevel, { label: string; dot: string; ring: string }> = {
@@ -45,6 +46,9 @@ export function CommentsRail({
               <span className={cn("size-2 rounded-full", m.dot)} />
               <span className="text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
                 {m.label}
+              </span>
+              <span className="rounded-sm border border-border px-1.5 py-px text-[10px] text-muted-foreground">
+                {ROLE_LABELS[c.role]}
               </span>
               {c.ruleId ? (
                 <span className="font-mono text-[10px] text-muted-foreground">
