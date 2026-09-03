@@ -143,9 +143,8 @@ export function DocumentPreview({
                             loc={{ block: i, row: -1, col: ci }}
                             activeId={activeId}
                             onSelect={onSelect}
-                            rejectedIds={rejectedIds}
-            rejectedIds={rejectedIds}
-                          />
+                             rejectedIds={rejectedIds}
+                           />
                         )}
                       </th>
                     ))}
@@ -174,8 +173,6 @@ export function DocumentPreview({
                               activeId={activeId}
                               onSelect={onSelect}
                               rejectedIds={rejectedIds}
-                            rejectedIds={rejectedIds}
-            rejectedIds={rejectedIds}
                             />
                           )}
                         </td>
