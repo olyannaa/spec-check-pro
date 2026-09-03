@@ -1,6 +1,7 @@
 import type { Finding, ReviewResult, Rule, Verdict } from "./types";
 
-const MODEL = "qwen-plus";
+const FREE_MODEL = "moonshotai/kimi-k2-instruct";
+const FREE_BASE = "https://api.groq.com/openai/v1";
 
 function extractJson(text: string): { findings?: Finding[] } | null {
   const fenced = text.match(/```json\s*([\s\S]*?)```/i);
@@ -19,15 +20,15 @@ export async function enrichWithQwen(
   document: string,
   rules: Rule[],
   seed: Finding[],
-): Promise<{ findings: Finding[]; used: boolean }> {
-  const apiKey = process.env.OPENAI_API_KEY ?? process.env.DASHSCOPE_API_KEY;
-  const baseUrl =
-    process.env.OPENAI_BASE_URL ??
-    "https://dashscope-intl.aliyuncs.com/compatible-mode/v1";
-  const model = process.env.OPENAI_MODEL ?? MODEL;
+): Promise<{ findings: Finding[]; used: boolean; model: string }> {
+  const groqKey = process.env.GROQ_API_KEY;
+  const apiKey =
+    groqKey ?? process.env.OPENAI_API_KEY ?? process.env.DASHSCOPE_API_KEY;
+  const baseUrl = process.env.OPENAI_BASE_URL ?? FREE_BASE;
+  const model = process.env.OPENAI_MODEL ?? FREE_MODEL;
 
   if (!apiKey) {
-    return { findings: seed, used: false };
+    return { findings: seed, used: false, model };
   }
 
   const rulesBlock = rules
@@ -73,7 +74,7 @@ ${JSON.stringify(seed.map((f) => ({ section: f.section, ask: f.ask, quote: f.quo
       }),
     });
     if (!res.ok) {
-      return { findings: seed, used: false };
+      return { findings: seed, used: false, model };
     }
     const data = (await res.json()) as {
       choices?: { message?: { content?: string } }[];
@@ -90,9 +91,9 @@ ${JSON.stringify(seed.map((f) => ({ section: f.section, ask: f.ask, quote: f.quo
       ask: f.ask || "",
       role: f.role ?? "developer",
     }));
-    return { findings: mergeFindings(seed, extra), used: true };
+    return { findings: mergeFindings(seed, extra), used: true, model };
   } catch {
-    return { findings: seed, used: false };
+    return { findings: seed, used: false, model };
   }
 }
 
@@ -126,6 +127,7 @@ function tooGeneric(f: Finding): boolean {
 export function finalizeReview(
   findings: Finding[],
   usedLlm: boolean,
+  model: string = FREE_MODEL,
 ): ReviewResult {
   const order = { high: 0, medium: 1, low: 2 };
   const sorted = [...findings].sort(
@@ -154,7 +156,7 @@ export function finalizeReview(
     summary,
     findings: sorted,
     counts,
-    model: MODEL,
+    model,
     usedLlm,
   };
 }
