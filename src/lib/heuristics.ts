@@ -113,7 +113,7 @@ function checkNullable(
 ) {
   const rule = ruleMeta(rules, "3");
   const hasFields = hasAny(doc.body, ["поле", "field_", "тип данных", "атрибут"]);
-  const hasNull = hasAny(doc.body, ["not null", "nullable", "null /", "обязательн"]);
+  const hasNull = hasAny(doc.body, ["not null", "nullable"]);
   if (hasFields && !hasNull) {
     const quote =
       findLine(doc.body, /FIELD_|Поле\s+Тип/i) ??
@@ -295,7 +295,7 @@ function checkDictionaries(
       ask: rule?.askIfMissing ?? "Перечислить справочники и ключ джойна.",
     });
   }
-  if (isMart && hasDict && !hasAny(doc.body, ["не найден", "нет записи", "left join", "inner", "если tac", "fallback"])) {
+  if (isMart && hasDict && !hasAny(doc.body, ["не найден", "нет записи", "left join", "inner join", "если tac"])) {
     const quote = findLine(doc.body, /справочник|_REF/i) ?? "справочники названы без правила джойна";
     push({
       severity: "medium",

@@ -60,5 +60,5 @@ export async function POST(req: Request) {
   }
 
   const result = await reviewDocument(text, rules);
-  return Response.json({ ...result, fileName });
+  return Response.json({ ...result, fileName, text });
 }

@@ -1,143 +1,153 @@
 "use client";
 
-import { FindingCard } from "@/components/finding-card";
+import { CommentsRail } from "@/components/comments-rail";
+import { DocumentPreview } from "@/components/document-preview";
+import {
+  commentsFromFindings,
+  parseBlocks,
+  type Block,
+  type CommentStatus,
+  type DocComment,
+} from "@/lib/doc-view";
 import { DEFAULT_RULES } from "@/lib/rules";
 import { SAMPLE_DOCS } from "@/lib/sample-meta";
-import type { ChatMessage, ReviewResult, Rule } from "@/lib/types";
+import type { ReviewResult, Rule } from "@/lib/types";
+import { cn } from "@/lib/utils";
 import {
-  CheckCircle2,
+  ArrowUp,
+  Download,
   FileText,
   Loader2,
   Paperclip,
-  Send,
+  Pencil,
+  Check,
   Shield,
-  Sparkles,
   X,
 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
-const WELCOME: ChatMessage = {
-  id: "welcome",
-  role: "assistant",
-  text: "Загрузите готовое ТЗ — PDF или текст. Проверю по 8 обязательным правилам и укажу места, которые стоит уточнить до разработки. Текст сам не исправляю.\n\nВажность каждого замечания: HIGH, MEDIUM или LOW. Модель: Qwen.",
-};
-
-function uid() {
-  return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-}
+type Stage = "input" | "loading" | "result";
 
 export default function SpecCheckApp() {
-  const [messages, setMessages] = useState<ChatMessage[]>([WELCOME]);
-  const [input, setInput] = useState("");
+  const [text, setText] = useState("");
   const [file, setFile] = useState<File | null>(null);
-  const [busy, setBusy] = useState(false);
+  const [stage, setStage] = useState<Stage>("input");
+  const [title, setTitle] = useState("Техническое задание");
+  const [sourceText, setSourceText] = useState("");
+  const [blocks, setBlocks] = useState<Block[]>([]);
+  const [comments, setComments] = useState<DocComment[]>([]);
+  const [summary, setSummary] = useState("");
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const [statuses, setStatuses] = useState<Record<string, CommentStatus>>({});
+  const [editing, setEditing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [rules, setRules] = useState<Rule[]>(DEFAULT_RULES);
   const [rulesOpen, setRulesOpen] = useState(false);
   const [draftRules, setDraftRules] = useState<Rule[]>(DEFAULT_RULES);
-  const scroller = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const saved = localStorage.getItem("speccheck-rules");
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved) as Rule[];
-        if (parsed.length) {
-          setRules(parsed);
-          setDraftRules(parsed);
-        }
-      } catch {
-        /* keep defaults */
+    if (!saved) return;
+    try {
+      const parsed = JSON.parse(saved) as Rule[];
+      if (parsed.length) {
+        setRules(parsed);
+        setDraftRules(parsed);
       }
+    } catch {
+      /* keep defaults */
     }
   }, []);
 
-  useEffect(() => {
-    scroller.current?.scrollTo({
-      top: scroller.current.scrollHeight,
-      behavior: "smooth",
-    });
-  }, [messages, rulesOpen, busy]);
+  const stats = useMemo(() => {
+    if (!comments.length) return null;
+    return {
+      total: comments.length,
+      crit: comments.filter((c) => c.severity === 3).length,
+      warn: comments.filter((c) => c.severity === 2).length,
+      note: comments.filter((c) => c.severity === 1).length,
+    };
+  }, [comments]);
 
-  async function runReview(payload: {
-    text?: string;
-    file?: File | null;
-    label: string;
-  }) {
-    setBusy(true);
-    setMessages((m) => [
-      ...m,
-      {
-        id: uid(),
-        role: "user",
-        text: payload.text,
-        fileName: payload.file?.name ?? (payload.text ? undefined : payload.label),
-      },
-    ]);
+  const rejectedIds = useMemo(
+    () =>
+      new Set(
+        Object.entries(statuses)
+          .filter(([, s]) => s === "rejected")
+          .map(([id]) => id),
+      ),
+    [statuses],
+  );
+
+  const canSend = text.trim().length > 0 || !!file;
+  const open = stage === "result";
+
+  async function analyze(override?: { text?: string; file?: File | null; title?: string }) {
+    const nextText = override?.text ?? text;
+    const nextFile = override?.file === undefined ? file : override.file;
+    if (!nextText.trim() && !nextFile) return;
+    setStage("loading");
+    setError(null);
     try {
       const form = new FormData();
       form.set("rules", JSON.stringify(rules));
-      if (payload.text) form.set("text", payload.text);
-      if (payload.file) form.set("file", payload.file);
+      if (nextText.trim()) form.set("text", nextText);
+      if (nextFile) form.set("file", nextFile);
       const res = await fetch("/api/review", { method: "POST", body: form });
-      const data = (await res.json()) as ReviewResult & { error?: string };
+      const data = (await res.json()) as ReviewResult & {
+        error?: string;
+        text?: string;
+        fileName?: string;
+      };
       if (!res.ok) {
-        setMessages((m) => [
-          ...m,
-          {
-            id: uid(),
-            role: "assistant",
-            text: data.error ?? "Не удалось разобрать документ.",
-          },
-        ]);
+        setError(data.error ?? "Не удалось разобрать документ.");
+        setStage("input");
         return;
       }
-      setMessages((m) => [
-        ...m,
-        {
-          id: uid(),
-          role: "assistant",
-          text: data.summary,
-          review: data,
-        },
-      ]);
+      const body = data.text?.trim() || nextText.trim();
+      const parsed = parseBlocks(body);
+      setSourceText(body);
+      setBlocks(parsed);
+      setComments(commentsFromFindings(parsed, data.findings));
+      setSummary(data.summary);
+      setTitle(override?.title ?? nextFile?.name ?? "Техническое задание");
+      setActiveId(null);
+      setStatuses({});
+      setEditing(false);
+      setStage("result");
     } catch {
-      setMessages((m) => [
-        ...m,
-        {
-          id: uid(),
-          role: "assistant",
-          text: "Сеть или сервер не ответили. Повторите проверку.",
-        },
-      ]);
-    } finally {
-      setBusy(false);
-      setInput("");
-      setFile(null);
+      setError("Сеть или сервер не ответили.");
+      setStage("input");
     }
   }
 
-  async function send() {
-    if (busy) return;
-    if (!input.trim() && !file) return;
-    await runReview({
-      text: input.trim() || undefined,
-      file,
-      label: "ТЗ",
-    });
-  }
-
-  async function loadSample(id: string, title: string) {
-    if (busy) return;
+  async function loadSample(id: string, sampleTitle: string) {
     const res = await fetch(`/api/samples?id=${id}`);
-    const data = (await res.json()) as { text?: string; error?: string };
+    const data = (await res.json()) as { text?: string };
     if (!data.text) return;
-    await runReview({ text: data.text, label: title });
+    setText(data.text);
+    setFile(null);
+    await analyze({ text: data.text, file: null, title: sampleTitle });
   }
 
-  function openRules() {
-    setDraftRules(rules);
-    setRulesOpen(true);
+  function select(id: string) {
+    setActiveId(id);
+    document
+      .getElementById(`comment-${id}`)
+      ?.scrollIntoView({ behavior: "smooth", block: "center" });
+    document
+      .getElementById(`mark-${id}`)
+      ?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }
+
+  function reset() {
+    setStage("input");
+    setComments([]);
+    setBlocks([]);
+    setActiveId(null);
+    setEditing(false);
+    setRulesOpen(false);
   }
 
   function saveRules() {
@@ -150,232 +160,257 @@ export default function SpecCheckApp() {
     setRules(next);
     localStorage.setItem("speccheck-rules", JSON.stringify(next));
     setRulesOpen(false);
-    setMessages((m) => [
-      ...m,
-      {
-        id: uid(),
-        role: "assistant",
-        rulesUpdated: true,
-        text: "8 обязательных правил обновлены. Следующая проверка ТЗ пойдёт уже по новой версии. Историю изменений документа по-прежнему не ревьюим.",
-      },
-    ]);
+  }
+
+  function downloadMd() {
+    const blob = new Blob([sourceText], { type: "text/markdown;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${title.replace(/\s+/g, "_")}.md`;
+    a.click();
+    URL.revokeObjectURL(url);
   }
 
   return (
-    <div className="flex h-full min-h-0 bg-bg">
-      <aside className="hidden w-[272px] shrink-0 flex-col bg-sidebar text-[#f3ece3] md:flex">
-        <div className="px-5 pb-4 pt-6">
-          <p className="font-mono text-[11px] tracking-[0.18em] text-[#c4b8a6]">
-            NET / SPECCHECK
-          </p>
-          <h1 className="mt-2 text-xl font-semibold tracking-tight">Ревизор ТЗ</h1>
-          <p className="mt-2 text-[13px] leading-relaxed text-[#b7ab9c]">
-            Предварительное ревью потоков и витрин. Qwen, 8 правил, без автоисправления.
-          </p>
-        </div>
-        <div className="px-3">
-          <p className="px-2 pb-2 font-mono text-[10px] uppercase tracking-widest text-[#8a7f71]">
-            Примеры
-          </p>
-          {SAMPLE_DOCS.map((s) => (
-            <button
-              key={s.id}
-              type="button"
-              onClick={() => loadSample(s.id, s.title)}
-              className="mb-1 flex w-full flex-col rounded-xl px-3 py-2.5 text-left hover:bg-white/10"
-            >
-              <span className="text-sm">{s.title}</span>
-              <span className="font-mono text-[11px] text-[#8a7f71]">{s.hint}</span>
-            </button>
-          ))}
-        </div>
-        <div className="mt-auto border-t border-white/8 px-5 py-4 text-[12px] leading-relaxed text-[#8a7f71]">
-          Проверка после написания. Решение о готовности — за аналитиком.
-        </div>
-      </aside>
-
-      <main className="flex min-w-0 flex-1 flex-col bg-bg-chat">
-        <header className="flex items-center justify-between border-b border-line px-4 py-3 md:px-6">
-          <div>
-            <p className="text-sm font-semibold">Проверка документа</p>
-            <p className="text-[12px] text-muted">
-              Модель Qwen · {rules.length} обязательных правил
-            </p>
+    <main className="flex min-h-screen bg-background text-foreground">
+      <div
+        className={cn(
+          "min-w-0 flex-1 transition-all duration-500 ease-out",
+          open && "hidden lg:block lg:max-w-[34rem]",
+        )}
+      >
+        <header className="no-print sticky top-0 z-30 flex h-14 items-center justify-between border-b border-border bg-background/90 px-6 backdrop-blur">
+          <div className="flex items-center gap-2">
+            <span className="size-2.5 rounded-full bg-destructive" />
+            <span className="text-sm font-semibold tracking-tight">Ревью ТЗ</span>
           </div>
-          <button
-            type="button"
-            onClick={openRules}
-            className="inline-flex items-center gap-2 rounded-full border border-line bg-white px-3 py-1.5 text-[12px] font-medium hover:border-[#cbbfaa]"
-          >
-            <Shield className="h-3.5 w-3.5 text-accent" />
-            8 правил
-          </button>
+          <span className="font-mono text-[11px] tracking-wide text-muted-foreground uppercase">
+            Анализ технических заданий
+          </span>
         </header>
 
-        <div ref={scroller} className="min-h-0 flex-1 space-y-5 overflow-y-auto px-4 py-6 md:px-8">
-          {messages.map((msg) => (
-            <MessageBubble key={msg.id} message={msg} />
-          ))}
-          {busy ? (
-            <div className="flex items-center gap-2 text-sm text-muted">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Смотрю шаблон, 8 правил и формулировки…
-            </div>
-          ) : null}
-        </div>
+        <section
+          className={cn(
+            "no-print mx-auto w-full max-w-3xl px-6 pb-16",
+            open ? "pt-10" : "pt-20",
+          )}
+        >
+          <h1
+            className={cn(
+              "text-center font-semibold tracking-tight text-balance",
+              open ? "text-2xl" : "text-4xl",
+            )}
+          >
+            Проверим ваше ТЗ на логические ошибки
+          </h1>
+          <p className="mt-4 text-center text-[15px] text-muted-foreground text-balance">
+            Прикрепите документ (Word или PDF) либо вставьте текст технического задания.
+            Замечания — HIGH, MEDIUM и LOW. Текст сам не переписываю.
+          </p>
 
-        <div className="border-t border-line bg-[#f7f2e9] px-3 py-3 md:px-6">
-          {rulesOpen ? (
-            <RulesEditor
-              draft={draftRules}
-              onChange={setDraftRules}
-              onCancel={() => setRulesOpen(false)}
-              onSave={saveRules}
+          {error ? (
+            <p className="mt-4 text-center text-sm text-destructive">{error}</p>
+          ) : null}
+
+          <div className="mt-10 rounded-2xl border border-border bg-card p-2 shadow-[0_1px_2px_rgba(0,0,0,0.04),0_12px_40px_-24px_rgba(0,0,0,0.4)] transition-colors focus-within:border-foreground/40">
+            <textarea
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              placeholder="Опишите контекст или вставьте текст ТЗ целиком…"
+              rows={5}
+              className="w-full resize-none bg-transparent px-4 pt-3 pb-2 text-[15px] outline-none placeholder:text-muted-foreground"
             />
-          ) : null}
+            {file ? (
+              <div className="mx-4 mb-2 inline-flex items-center gap-2 rounded-md border border-border bg-secondary px-2.5 py-1.5 text-[13px]">
+                <FileText className="size-3.5" />
+                <span className="max-w-[18rem] truncate">{file.name}</span>
+                <button
+                  onClick={() => setFile(null)}
+                  className="text-muted-foreground hover:text-destructive"
+                  aria-label="Удалить файл"
+                >
+                  <X className="size-3.5" />
+                </button>
+              </div>
+            ) : null}
 
-          {file ? (
-            <div className="mb-2 flex items-center gap-2 rounded-xl border border-line bg-white px-3 py-2 text-sm">
-              <FileText className="h-4 w-4 text-accent" />
-              <span className="truncate">{file.name}</span>
+            {rulesOpen ? (
+              <RulesEditor
+                draft={draftRules}
+                onChange={setDraftRules}
+                onCancel={() => setRulesOpen(false)}
+                onSave={saveRules}
+              />
+            ) : null}
+
+            <div className="flex items-center justify-between gap-2 px-2 pb-1">
+              <div className="flex flex-wrap items-center gap-1">
+                <button
+                  onClick={() => fileRef.current?.click()}
+                  className="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+                >
+                  <Paperclip className="size-4" />
+                  Прикрепить файл
+                </button>
+                <button
+                  onClick={() => {
+                    setDraftRules(rules);
+                    setRulesOpen((v) => !v);
+                  }}
+                  className="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+                >
+                  <Shield className="size-4" />
+                  Обновить 8 обязательных правил
+                </button>
+              </div>
+              <input
+                ref={fileRef}
+                type="file"
+                accept=".pdf,.txt,.md,.doc,.docx,application/pdf"
+                className="hidden"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) setFile(f);
+                  e.target.value = "";
+                }}
+              />
               <button
-                type="button"
-                className="ml-auto text-muted hover:text-ink"
-                onClick={() => setFile(null)}
+                onClick={() => void analyze()}
+                disabled={!canSend || stage === "loading"}
+                className={cn(
+                  "inline-flex size-10 items-center justify-center rounded-full transition-all",
+                  canSend
+                    ? "bg-destructive text-destructive-foreground hover:opacity-90"
+                    : "bg-secondary text-muted-foreground",
+                )}
+                aria-label="Отправить на анализ"
               >
-                <X className="h-4 w-4" />
+                {stage === "loading" ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <ArrowUp className="size-4" />
+                )}
               </button>
             </div>
-          ) : null}
-
-          <div className="mb-2 flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={() => fileRef.current?.click()}
-              className="inline-flex items-center gap-1.5 rounded-full border border-line bg-white px-3 py-1.5 text-[12px] font-medium hover:bg-[#fffdf8]"
-            >
-              <Paperclip className="h-3.5 w-3.5" />
-              Приложить PDF
-            </button>
-            <button
-              type="button"
-              onClick={openRules}
-              className="inline-flex items-center gap-1.5 rounded-full bg-accent px-3 py-1.5 text-[12px] font-medium text-white hover:bg-[#0d5c56]"
-            >
-              <Sparkles className="h-3.5 w-3.5" />
-              Обновить 8 обязательных правил
-            </button>
-            <input
-              ref={fileRef}
-              type="file"
-              accept=".pdf,.txt,.md"
-              className="hidden"
-              onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-            />
           </div>
 
-          <div className="flex items-end gap-2 rounded-2xl border border-line bg-white p-2 shadow-[0_8px_30px_rgba(28,25,21,0.04)]">
-            <textarea
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault();
-                  void send();
-                }
-              }}
-              rows={3}
-              placeholder="Вставьте текст ТЗ или приложите PDF и нажмите Проверить"
-              className="max-h-40 min-h-[72px] flex-1 resize-none bg-transparent px-3 py-2 text-sm outline-none placeholder:text-[#a39888]"
-            />
-            <button
-              type="button"
-              disabled={busy || (!input.trim() && !file)}
-              onClick={() => void send()}
-              className="mb-1 mr-1 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-ink text-white disabled:opacity-30"
-              aria-label="Проверить"
-            >
-              <Send className="h-4 w-4" />
-            </button>
+          <div className="mt-6 flex flex-wrap justify-center gap-2">
+            {SAMPLE_DOCS.map((s) => (
+              <button
+                key={s.id}
+                type="button"
+                onClick={() => void loadSample(s.id, s.title)}
+                className="rounded-full border border-border px-3 py-1.5 text-[12px] text-muted-foreground hover:border-foreground hover:text-foreground"
+              >
+                {s.title}
+              </button>
+            ))}
           </div>
-          <p className="px-1 pt-2 text-[11px] text-muted">
-            Enter — проверить · Shift+Enter — новая строка
-          </p>
-        </div>
-      </main>
-    </div>
-  );
-}
-
-function MessageBubble({ message }: { message: ChatMessage }) {
-  if (message.role === "user") {
-    return (
-      <div className="ml-auto max-w-[720px] rounded-2xl rounded-br-md bg-ink px-4 py-3 text-sm leading-relaxed text-[#f7f2e9]">
-        {message.fileName ? (
-          <p className="mb-1 flex items-center gap-1.5 font-mono text-[11px] text-[#cbbfaa]">
-            <FileText className="h-3.5 w-3.5" />
-            {message.fileName}
-          </p>
-        ) : null}
-        {message.text ? (
-          <pre className="max-h-48 overflow-auto whitespace-pre-wrap font-sans text-[13px]">
-            {message.text.slice(0, 1200)}
-            {message.text.length > 1200 ? "…" : ""}
-          </pre>
-        ) : null}
+        </section>
       </div>
-    );
-  }
 
-  const review = message.review;
-  return (
-    <div className="max-w-[760px]">
-      {message.rulesUpdated ? (
-        <p className="mb-2 inline-flex items-center gap-1.5 rounded-full bg-[#e7f3f1] px-2.5 py-1 text-[11px] font-medium text-accent">
-          <CheckCircle2 className="h-3.5 w-3.5" />
-          Правила обновлены
-        </p>
-      ) : null}
-      {message.text ? (
-        <p className="whitespace-pre-wrap text-[15px] leading-relaxed text-ink">
-          {message.text}
-        </p>
-      ) : null}
-      {review ? <ReviewBlock review={review} /> : null}
-    </div>
-  );
-}
+      <aside
+        className={cn(
+          "flex h-screen shrink-0 flex-col overflow-hidden border-l border-border bg-background transition-all duration-500 ease-out",
+          open ? "sticky top-0 w-full lg:flex-1" : "w-0 border-l-0",
+        )}
+      >
+        {open && stats ? (
+          <>
+            <div className="no-print flex flex-wrap items-center gap-3 border-b border-border px-6 py-3">
+              <div className="mr-auto min-w-0">
+                <p className="truncate text-sm font-semibold">{title}</p>
+                <p className="mt-0.5 flex items-center gap-3 text-[12px] text-muted-foreground">
+                  <span>Замечаний: {stats.total}</span>
+                  <span className="inline-flex items-center gap-1">
+                    <i className="size-2 rounded-full bg-crit" />
+                    HIGH {stats.crit}
+                  </span>
+                  <span className="inline-flex items-center gap-1">
+                    <i className="size-2 rounded-full bg-warn" />
+                    MEDIUM {stats.warn}
+                  </span>
+                  <span className="inline-flex items-center gap-1">
+                    <i className="size-2 rounded-full bg-note" />
+                    LOW {stats.note}
+                  </span>
+                </p>
+                {summary ? (
+                  <p className="mt-1 max-w-xl text-[12px] text-muted-foreground">
+                    {summary}
+                  </p>
+                ) : null}
+              </div>
+              <button
+                onClick={() => setEditing((v) => !v)}
+                className={cn(
+                  "inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-[13px] transition-colors",
+                  editing
+                    ? "border-destructive bg-destructive text-destructive-foreground"
+                    : "border-border hover:border-foreground",
+                )}
+              >
+                {editing ? <Check className="size-3.5" /> : <Pencil className="size-3.5" />}
+                {editing ? "Готово" : "Исправить текст"}
+              </button>
+              <button
+                onClick={downloadMd}
+                className="inline-flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-[13px] transition-colors hover:border-foreground"
+              >
+                <Download className="size-3.5" />
+                Word
+              </button>
+              <button
+                onClick={() => window.print()}
+                className="inline-flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-[13px] transition-colors hover:border-foreground"
+              >
+                <Download className="size-3.5" />
+                PDF
+              </button>
+              <button
+                onClick={reset}
+                className="inline-flex size-9 items-center justify-center rounded-lg border border-border transition-colors hover:border-foreground"
+                aria-label="Закрыть"
+              >
+                <X className="size-4" />
+              </button>
+            </div>
 
-function ReviewBlock({ review }: { review: ReviewResult }) {
-  const verdictLabel =
-    review.verdict === "not_ready"
-      ? "Не готов к разработке"
-      : review.verdict === "needs_work"
-        ? "Нужна доработка"
-        : "Можно передавать";
-  return (
-    <div className="mt-4 space-y-3">
-      <div className="flex flex-wrap gap-2 text-[12px]">
-        <span className="rounded-full bg-ink px-2.5 py-1 font-medium text-white">
-          {verdictLabel}
-        </span>
-        <span className="rounded-full bg-[#fcebea] px-2.5 py-1 font-mono text-[#b42318]">
-          HIGH {review.counts.high}
-        </span>
-        <span className="rounded-full bg-[#fef3e2] px-2.5 py-1 font-mono text-[#b45309]">
-          MEDIUM {review.counts.medium}
-        </span>
-        <span className="rounded-full bg-[#f1eee8] px-2.5 py-1 font-mono text-[#57534e]">
-          LOW {review.counts.low}
-        </span>
-        <span className="rounded-full border border-line px-2.5 py-1 text-muted">
-          {review.usedLlm ? "Qwen + правила" : "правила и эвристики"}
-        </span>
-      </div>
-      {review.findings.map((f, i) => (
-        <FindingCard key={f.id} finding={f} index={i} />
-      ))}
-    </div>
+            <div className="print-area flex min-h-0 flex-1 overflow-hidden">
+              <div className="min-w-0 flex-1 overflow-y-auto">
+                <DocumentPreview
+                  title={title}
+                  blocks={blocks}
+                  comments={comments}
+                  activeId={activeId}
+                  rejectedIds={rejectedIds}
+                  onSelect={select}
+                  editing={editing}
+                  onEdit={(i, next) =>
+                    setBlocks((prev) => prev.map((b, bi) => (bi === i ? next : b)))
+                  }
+                />
+              </div>
+              <div className="no-print hidden w-[24rem] shrink-0 overflow-y-auto border-l border-border bg-secondary/30 p-4 lg:block">
+                <p className="mb-3 px-1 font-mono text-[11px] tracking-wide text-muted-foreground uppercase">
+                  Комментарии
+                </p>
+                <CommentsRail
+                  comments={comments}
+                  activeId={activeId}
+                  statuses={statuses}
+                  onSelect={select}
+                  onStatus={(id, status) =>
+                    setStatuses((prev) => ({ ...prev, [id]: status }))
+                  }
+                />
+              </div>
+            </div>
+          </>
+        ) : null}
+      </aside>
+    </main>
   );
 }
 
@@ -394,56 +429,49 @@ function RulesEditor({
     onChange(draft.map((r) => (r.id === id ? { ...r, [field]: value } : r)));
   }
   return (
-    <div className="mb-3 max-h-[46vh] overflow-y-auto rounded-2xl border border-line bg-white p-4">
-      <div className="mb-3 flex items-center justify-between">
-        <div>
-          <p className="text-sm font-semibold">Обновить 8 обязательных правил</p>
-          <p className="text-[12px] text-muted">
-            Правки попадут в следующую проверку. Не пропадают после перезагрузки.
-          </p>
-        </div>
-        <button type="button" onClick={onCancel} className="text-muted">
-          <X className="h-4 w-4" />
+    <div className="mx-2 mb-3 max-h-72 overflow-y-auto rounded-xl border border-border bg-secondary/40 p-3">
+      <div className="mb-2 flex items-center justify-between">
+        <p className="text-sm font-medium">8 обязательных правил</p>
+        <button type="button" onClick={onCancel} className="text-muted-foreground">
+          <X className="size-4" />
         </button>
       </div>
-      <div className="space-y-3">
+      <div className="space-y-2">
         {draft.map((rule) => (
-          <div key={rule.id} className="rounded-xl border border-line p-3">
-            <p className="mb-2 font-mono text-[11px] text-muted">Правило {rule.id}</p>
+          <div key={rule.id} className="rounded-lg border border-border bg-background p-2">
+            <p className="mb-1 font-mono text-[10px] text-muted-foreground">
+              Правило {rule.id}
+            </p>
             <input
               value={rule.title}
               onChange={(e) => patch(rule.id, "title", e.target.value)}
-              className="mb-2 w-full rounded-lg border border-line px-2 py-1.5 text-sm"
+              className="mb-1 w-full rounded-md border border-border px-2 py-1 text-sm outline-none"
             />
             <textarea
               value={rule.lookFor}
               onChange={(e) => patch(rule.id, "lookFor", e.target.value)}
               rows={2}
-              className="mb-2 w-full rounded-lg border border-line px-2 py-1.5 text-[13px]"
+              className="mb-1 w-full rounded-md border border-border px-2 py-1 text-[12px] outline-none"
             />
             <textarea
               value={rule.askIfMissing}
               onChange={(e) => patch(rule.id, "askIfMissing", e.target.value)}
               rows={2}
-              className="w-full rounded-lg border border-line px-2 py-1.5 text-[13px]"
+              className="w-full rounded-md border border-border px-2 py-1 text-[12px] outline-none"
             />
           </div>
         ))}
       </div>
-      <div className="mt-3 flex justify-end gap-2">
-        <button
-          type="button"
-          onClick={onCancel}
-          className="rounded-xl px-3 py-1.5 text-sm text-muted"
-        >
+      <div className="mt-2 flex justify-end gap-2">
+        <button type="button" onClick={onCancel} className="px-2 py-1 text-sm text-muted-foreground">
           Отмена
         </button>
         <button
           type="button"
           onClick={onSave}
-          className="rounded-xl bg-accent px-3 py-1.5 text-sm font-medium text-white"
+          className="rounded-md bg-destructive px-3 py-1.5 text-sm text-destructive-foreground"
         >
-          Сохранить правила
+          Сохранить
         </button>
       </div>
     </div>

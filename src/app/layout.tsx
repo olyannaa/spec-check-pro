@@ -1,29 +1,30 @@
 import type { Metadata } from "next";
-import { IBM_Plex_Mono, Manrope } from "next/font/google";
+import { Golos_Text, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 
-const manrope = Manrope({
-  variable: "--font-manrope",
+const golos = Golos_Text({
+  variable: "--font-golos",
   subsets: ["latin", "cyrillic"],
+  weight: ["400", "500", "600", "700"],
 });
 
-const ibm = IBM_Plex_Mono({
-  variable: "--font-ibm",
-  weight: ["400", "500"],
+const jetbrains = JetBrains_Mono({
+  variable: "--font-jetbrains",
   subsets: ["latin", "cyrillic"],
+  weight: ["400", "500"],
 });
 
 export const metadata: Metadata = {
-  title: "SpecCheck — ревью ТЗ NET",
+  title: "Ревью ТЗ — анализ технических заданий",
   description:
-    "Предварительное ревью технических заданий на потоки и витрины данных.",
+    "Загрузите ТЗ и получите документ с подсвеченными местами и комментариями HIGH / MEDIUM / LOW.",
 };
 
 export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="ru" className={`${manrope.variable} ${ibm.variable} h-full`}>
+    <html lang="ru" className={`${golos.variable} ${jetbrains.variable} h-full`}>
       <body className="h-full antialiased">{children}</body>
     </html>
   );
