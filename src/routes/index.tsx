@@ -11,7 +11,7 @@ import {
   X,
 } from "lucide-react";
 import { matchDoc } from "@/data";
-import type { Block, ReviewDoc } from "@/data/types";
+import type { Block, CommentStatus, ReviewDoc } from "@/data/types";
 import { DocumentPreview } from "@/components/DocumentPreview";
 import { CommentsRail } from "@/components/CommentsRail";
 import { downloadDocx, downloadPdf } from "@/lib/doc-export";
@@ -48,6 +48,7 @@ function Index() {
   const [doc, setDoc] = useState<ReviewDoc | null>(null);
   const [blocks, setBlocks] = useState<Block[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [statuses, setStatuses] = useState<Record<string, CommentStatus>>({});
   const [editing, setEditing] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
