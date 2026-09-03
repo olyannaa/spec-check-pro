@@ -9,6 +9,7 @@ import {
   type CommentStatus,
   type DocComment,
 } from "@/lib/doc-view";
+import { buildExportReport, fileStem } from "@/lib/export-report";
 import { DEFAULT_RULES } from "@/lib/rules";
 import { SAMPLE_DOCS } from "@/lib/sample-meta";
 import { ROLE_LABELS, type ReviewResult, type ReviewRole, type Rule } from "@/lib/types";
@@ -33,7 +34,6 @@ export default function SpecCheckApp() {
   const [file, setFile] = useState<File | null>(null);
   const [stage, setStage] = useState<Stage>("input");
   const [title, setTitle] = useState("Техническое задание");
-  const [sourceText, setSourceText] = useState("");
   const [blocks, setBlocks] = useState<Block[]>([]);
   const [comments, setComments] = useState<DocComment[]>([]);
   const [summary, setSummary] = useState("");
@@ -46,6 +46,7 @@ export default function SpecCheckApp() {
   const [draftRules, setDraftRules] = useState<Rule[]>(DEFAULT_RULES);
   const [llmCalls, setLlmCalls] = useState(0);
   const [rolesRan, setRolesRan] = useState<ReviewRole[]>([]);
+  const [exporting, setExporting] = useState<"docx" | "pdf" | null>(null);
 
   useEffect(() => {
     const saved = localStorage.getItem("speccheck-rules");
@@ -116,7 +117,6 @@ export default function SpecCheckApp() {
       }
       const body = data.text?.trim() || nextText.trim();
       const parsed = parseBlocks(body);
-      setSourceText(body);
       setBlocks(parsed);
       setComments(commentsFromFindings(parsed, data.findings));
       setSummary(data.summary);
@@ -175,14 +175,42 @@ export default function SpecCheckApp() {
     setRulesOpen(false);
   }
 
-  function downloadMd() {
-    const blob = new Blob([sourceText], { type: "text/markdown;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${title.replace(/\s+/g, "_")}.md`;
-    a.click();
-    URL.revokeObjectURL(url);
+  async function downloadExport(format: "docx" | "pdf") {
+    if (exporting) return;
+    setExporting(format);
+    setError(null);
+    try {
+      const report = buildExportReport({
+        title,
+        summary,
+        roleLine,
+        blocks,
+        comments,
+        statuses,
+      });
+      const res = await fetch("/api/export", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ format, report }),
+      });
+      if (!res.ok) {
+        const data = (await res.json().catch(() => null)) as { error?: string } | null;
+        throw new Error(data?.error ?? "Не удалось собрать файл.");
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${fileStem(title)}_ревью.${format === "pdf" ? "pdf" : "docx"}`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Не удалось скачать файл.");
+    } finally {
+      setExporting(null);
+    }
   }
 
   return (
@@ -360,6 +388,9 @@ export default function SpecCheckApp() {
                         {summary}
                       </p>
                     ) : null}
+                    {error ? (
+                      <p className="mt-1 text-[12px] text-destructive">{error}</p>
+                    ) : null}
                   </div>
                   <button
                     type="button"
@@ -376,18 +407,28 @@ export default function SpecCheckApp() {
                   </button>
                   <button
                     type="button"
-                    onClick={downloadMd}
-                    className="inline-flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-[13px] hover:border-foreground"
+                    onClick={() => void downloadExport("docx")}
+                    disabled={!!exporting}
+                    className="inline-flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-[13px] hover:border-foreground disabled:opacity-50"
                   >
-                    <Download className="size-3.5" />
+                    {exporting === "docx" ? (
+                      <Loader2 className="size-3.5 animate-spin" />
+                    ) : (
+                      <Download className="size-3.5" />
+                    )}
                     Word
                   </button>
                   <button
                     type="button"
-                    onClick={() => window.print()}
-                    className="inline-flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-[13px] hover:border-foreground"
+                    onClick={() => void downloadExport("pdf")}
+                    disabled={!!exporting}
+                    className="inline-flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-[13px] hover:border-foreground disabled:opacity-50"
                   >
-                    <Download className="size-3.5" />
+                    {exporting === "pdf" ? (
+                      <Loader2 className="size-3.5 animate-spin" />
+                    ) : (
+                      <Download className="size-3.5" />
+                    )}
                     PDF
                   </button>
                   <button

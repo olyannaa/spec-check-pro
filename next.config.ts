@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  serverExternalPackages: ["unpdf"],
+  serverExternalPackages: ["unpdf", "pdfkit", "docx"],
   allowedDevOrigins: ["127.0.0.1", "localhost", "::1"],
 };
 
