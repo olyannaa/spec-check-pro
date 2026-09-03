@@ -1,4 +1,4 @@
-import { Fragment } from "react";
+import { Fragment, type ReactNode } from "react";
 import type { Block, Comment, Severity } from "@/data/types";
 import { cn } from "@/lib/utils";
 
@@ -6,6 +6,12 @@ const markClass: Record<Severity, string> = {
   3: "mark-3",
   2: "mark-2",
   1: "mark-1",
+};
+
+const markActiveClass: Record<Severity, string> = {
+  3: "mark-3-active",
+  2: "mark-2-active",
+  1: "mark-1-active",
 };
 
 type Loc = { block: number; row?: number; col?: number };
@@ -50,11 +56,12 @@ function HighlightedText({
   if (ranges.length === 0) return <>{text}</>;
   ranges.sort((x, y) => x.start - y.start);
 
-  const parts: React.ReactNode[] = [];
+  const parts: ReactNode[] = [];
   let cursor = 0;
   ranges.forEach((r, i) => {
     if (r.start > cursor) parts.push(<Fragment key={`t${i}`}>{text.slice(cursor, r.start)}</Fragment>);
     const active = activeId === r.comment.id;
+    const dimmed = activeId !== null && !active;
     parts.push(
       <mark
         key={`m${i}`}
@@ -63,7 +70,9 @@ function HighlightedText({
         className={cn(
           "cursor-pointer rounded-[3px] px-0.5 text-foreground transition-all",
           markClass[r.comment.severity],
-          active && "ring-2 ring-foreground/70 ring-offset-1",
+          active && markActiveClass[r.comment.severity],
+          active && "ring-2 ring-foreground/60 ring-offset-1",
+          dimmed && "opacity-45",
         )}
         title={`Комментарий ${r.comment.n}`}
       >
