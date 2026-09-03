@@ -91,117 +91,116 @@ function Index() {
     setEditing(false);
   }
 
+  const open = stage === "result";
+
   return (
-    <main className="min-h-screen bg-background text-foreground">
-      {/* Верхняя панель */}
-      <header className="no-print sticky top-0 z-30 flex h-14 items-center justify-between border-b border-border bg-background/90 px-6 backdrop-blur">
-        <div className="flex items-center gap-2">
-          <span className="size-2.5 rounded-full bg-destructive" />
-          <span className="text-sm font-semibold tracking-tight">Ревью ТЗ</span>
-        </div>
-        <span className="font-mono text-[11px] tracking-wide text-muted-foreground uppercase">
-          Анализ технических заданий
-        </span>
-      </header>
+    <main className="flex min-h-screen bg-background text-foreground">
+      {/* Левая часть */}
+      <div
+        className={cn(
+          "min-w-0 flex-1 transition-all duration-500 ease-out",
+          open && "hidden lg:block lg:max-w-[34rem]",
+        )}
+      >
+        <header className="no-print sticky top-0 z-30 flex h-14 items-center justify-between border-b border-border bg-background/90 px-6 backdrop-blur">
+          <div className="flex items-center gap-2">
+            <span className="size-2.5 rounded-full bg-destructive" />
+            <span className="text-sm font-semibold tracking-tight">Ревью ТЗ</span>
+          </div>
+          <span className="font-mono text-[11px] tracking-wide text-muted-foreground uppercase">
+            Анализ технических заданий
+          </span>
+        </header>
 
-      {/* Ввод */}
-      <section className="no-print mx-auto w-full max-w-3xl px-6 pt-20 pb-16">
-        <h1 className="text-center text-4xl font-semibold tracking-tight text-balance">
-          Проверим ваше ТЗ на логические ошибки
-        </h1>
-        <p className="mt-4 text-center text-[15px] text-muted-foreground text-balance">
-          Прикрепите документ (Word или PDF) либо вставьте текст технического задания.
-        </p>
+        {/* Ввод */}
+        <section
+          className={cn(
+            "no-print mx-auto w-full max-w-3xl px-6 pb-16",
+            open ? "pt-10" : "pt-20",
+          )}
+        >
+          <h1
+            className={cn(
+              "text-center font-semibold tracking-tight text-balance",
+              open ? "text-2xl" : "text-4xl",
+            )}
+          >
+            Проверим ваше ТЗ на логические ошибки
+          </h1>
+          <p className="mt-4 text-center text-[15px] text-muted-foreground text-balance">
+            Прикрепите документ (Word или PDF) либо вставьте текст технического задания.
+          </p>
 
-        <div className="mt-10 rounded-2xl border border-border bg-card p-2 shadow-[0_1px_2px_rgba(0,0,0,0.04),0_12px_40px_-24px_rgba(0,0,0,0.4)] transition-colors focus-within:border-foreground/40">
-          <textarea
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            placeholder="Опишите контекст или вставьте текст ТЗ целиком…"
-            rows={5}
-            className="w-full resize-none bg-transparent px-4 pt-3 pb-2 text-[15px] outline-none placeholder:text-muted-foreground"
-          />
-          {fileName && (
-            <div className="mx-4 mb-2 inline-flex items-center gap-2 rounded-md border border-border bg-secondary px-2.5 py-1.5 text-[13px]">
-              <FileText className="size-3.5" />
-              <span className="max-w-[18rem] truncate">{fileName}</span>
+          <div className="mt-10 rounded-2xl border border-border bg-card p-2 shadow-[0_1px_2px_rgba(0,0,0,0.04),0_12px_40px_-24px_rgba(0,0,0,0.4)] transition-colors focus-within:border-foreground/40">
+            <textarea
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              placeholder="Опишите контекст или вставьте текст ТЗ целиком…"
+              rows={5}
+              className="w-full resize-none bg-transparent px-4 pt-3 pb-2 text-[15px] outline-none placeholder:text-muted-foreground"
+            />
+            {fileName && (
+              <div className="mx-4 mb-2 inline-flex items-center gap-2 rounded-md border border-border bg-secondary px-2.5 py-1.5 text-[13px]">
+                <FileText className="size-3.5" />
+                <span className="max-w-[18rem] truncate">{fileName}</span>
+                <button
+                  onClick={() => setFileName(null)}
+                  className="text-muted-foreground hover:text-destructive"
+                  aria-label="Удалить файл"
+                >
+                  <X className="size-3.5" />
+                </button>
+              </div>
+            )}
+            <div className="flex items-center justify-between px-2 pb-1">
               <button
-                onClick={() => setFileName(null)}
-                className="text-muted-foreground hover:text-destructive"
-                aria-label="Удалить файл"
+                onClick={() => fileRef.current?.click()}
+                className="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
               >
-                <X className="size-3.5" />
+                <Paperclip className="size-4" />
+                Прикрепить файл
+              </button>
+              <input
+                ref={fileRef}
+                type="file"
+                accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                className="hidden"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) setFileName(f.name);
+                  e.target.value = "";
+                }}
+              />
+              <button
+                onClick={analyze}
+                disabled={!canSend || stage === "loading"}
+                className={cn(
+                  "inline-flex size-10 items-center justify-center rounded-full transition-all",
+                  canSend
+                    ? "bg-destructive text-destructive-foreground hover:opacity-90"
+                    : "bg-secondary text-muted-foreground",
+                )}
+                aria-label="Отправить на анализ"
+              >
+                {stage === "loading" ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <ArrowUp className="size-4" />
+                )}
               </button>
             </div>
-          )}
-          <div className="flex items-center justify-between px-2 pb-1">
-            <button
-              onClick={() => fileRef.current?.click()}
-              className="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
-            >
-              <Paperclip className="size-4" />
-              Прикрепить файл
-            </button>
-            <input
-              ref={fileRef}
-              type="file"
-              accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-              className="hidden"
-              onChange={(e) => {
-                const f = e.target.files?.[0];
-                if (f) setFileName(f.name);
-                e.target.value = "";
-              }}
-            />
-            <button
-              onClick={analyze}
-              disabled={!canSend || stage === "loading"}
-              className={cn(
-                "inline-flex size-10 items-center justify-center rounded-full transition-all",
-                canSend
-                  ? "bg-destructive text-destructive-foreground hover:opacity-90"
-                  : "bg-secondary text-muted-foreground",
-              )}
-              aria-label="Отправить на анализ"
-            >
-              {stage === "loading" ? (
-                <Loader2 className="size-4 animate-spin" />
-              ) : (
-                <ArrowUp className="size-4" />
-              )}
-            </button>
           </div>
-        </div>
-
-        <div className="mt-6 flex flex-wrap items-center justify-center gap-2">
-          <span className="text-[12px] text-muted-foreground">Демо-документы:</span>
-          {DOCS.map((d) => (
-            <button
-              key={d.id}
-              onClick={() => setFileName(`${d.title}.pdf`)}
-              className="rounded-full border border-border px-3 py-1 text-[12px] transition-colors hover:border-foreground"
-            >
-              {d.title}
-            </button>
-          ))}
-        </div>
-      </section>
-
-      {/* Затемнение */}
-      {stage === "result" && (
-        <div
-          className="no-print fixed inset-0 z-40 bg-foreground/20 backdrop-blur-[1px]"
-          onClick={reset}
-        />
-      )}
+        </section>
+      </div>
 
       {/* Боковая панель предпросмотра */}
       <aside
         className={cn(
-          "fixed top-0 right-0 z-50 flex h-screen w-full flex-col border-l border-border bg-background transition-transform duration-500 ease-out lg:w-[min(1180px,92vw)]",
-          stage === "result" ? "translate-x-0" : "translate-x-full",
+          "flex h-screen shrink-0 flex-col overflow-hidden border-l border-border bg-background transition-all duration-500 ease-out",
+          open ? "sticky top-0 w-full lg:flex-1" : "w-0 border-l-0",
         )}
       >
+
         {doc && stats && (
           <>
             <div className="no-print flex flex-wrap items-center gap-3 border-b border-border px-6 py-3">
