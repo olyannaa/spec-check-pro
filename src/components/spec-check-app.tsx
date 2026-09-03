@@ -215,7 +215,7 @@ export default function SpecCheckApp() {
           <header className="flex h-14 items-center justify-between border-b border-border bg-background px-6">
             <div className="flex items-center gap-2">
               <span className="size-2.5 rounded-full bg-destructive" />
-              <span className="text-sm font-semibold tracking-tight">Ревью ТЗ</span>
+              <span className="text-sm font-semibold tracking-tight">SPEC CHECK PRO</span>
             </div>
             <span className="font-mono text-[11px] tracking-wide text-muted-foreground uppercase">
               Анализ технических заданий
@@ -329,7 +329,7 @@ export default function SpecCheckApp() {
           <div className="hidden min-w-0 lg:block lg:max-w-[34rem] lg:flex-none lg:border-r lg:border-border">
             <header className="flex h-14 items-center gap-2 border-b border-border px-6">
               <span className="size-2.5 rounded-full bg-destructive" />
-              <span className="text-sm font-semibold tracking-tight">Ревью ТЗ</span>
+              <span className="text-sm font-semibold tracking-tight">SPEC CHECK PRO</span>
             </header>
             <section className="px-6 py-10">
               <p className="text-lg font-semibold">Новая проверка</p>

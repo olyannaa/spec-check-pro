@@ -315,36 +315,32 @@ function checkContradictions(
   push: (f: Omit<Finding, "id">) => void,
 ) {
   if (hasAny(doc.body, ["инкремент"]) && hasAny(doc.body, ["полная перезагрузка", "без upsert"])) {
+    const incrementLine = findLine(doc.body, /инкремент/i);
+    const reloadLine = findLine(doc.body, /полная перезагрузка|upsert/i);
     push({
       severity: "high",
       role: "developer",
       section: "Способ загрузки / Обновление",
       quote: snippet(
-        [
-          findLine(doc.body, /инкремент/i),
-          findLine(doc.body, /полная перезагрузка|upsert/i),
-        ]
-          .filter(Boolean)
-          .join(" ↔ "),
+        [incrementLine, reloadLine].filter(Boolean).join(" ↔ "),
       ),
+      sourceQuotes: [incrementLine, reloadLine].filter((line): line is string => Boolean(line)),
       why: "В одном ТЗ одновременно «инкремент» и «только полная перезагрузка месяца без upsert». Разработчик не поймёт, как обновлять партицию.",
       ask: "Оставить один способ загрузки: инкремент или полная перезагрузка месяца, и описать окно пересчёта.",
     });
   }
 
   if (hasAny(doc.body, ["< 1 мин"]) && hasAny(doc.body, ["0 сек", "≈ 0"])) {
+    const latencyLine = findLine(doc.body, /задержк/i);
+    const zeroLine = findLine(doc.body, /0 сек/i);
     push({
       severity: "medium",
       role: "qa",
       section: "Нефункциональные требования",
       quote: snippet(
-        [
-          findLine(doc.body, /задержк/i),
-          findLine(doc.body, /0 сек/i),
-        ]
-          .filter(Boolean)
-          .join(" ↔ "),
+        [latencyLine, zeroLine].filter(Boolean).join(" ↔ "),
       ),
+      sourceQuotes: [latencyLine, zeroLine].filter((line): line is string => Boolean(line)),
       why: "Задержка «< 1 мин» противоречит стримингу «≈ 0 сек». SLA приёмки будет спорным.",
       ask: "Зафиксировать одну целевую задержку и где она измеряется (Kafka / Flink / RAW).",
     });
@@ -358,6 +354,7 @@ function checkContradictions(
         role: "developer",
         section: "Шаг 4. Агрегация",
         quote: snippet(line),
+        sourceQuotes: ["FIELD_USERS_CNT = count(distinct FIELD_IMSI)"],
         why: "Метрика FIELD_USERS_CNT указана в группировке. Это поле расчёта, а не измерение — запрос будет неверным.",
         ask: "Убрать FIELD_USERS_CNT из GROUP BY, оставить region и vendor.",
       });
@@ -406,6 +403,7 @@ function checkFieldLogic(
         role: "developer",
         section: "Структура данных",
         quote: snippet(`${start} / ${end}`),
+        sourceQuotes: [start, end],
         why: "Для начала события указано Unix-время, для окончания — нет. Единицы TIME_END останутся спорными (unix vs timestamp vs мс).",
         ask: "Одинаково описать единицы FIELD_TIME_START и FIELD_TIME_END.",
       });

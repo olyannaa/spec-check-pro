@@ -15,7 +15,7 @@ const jetbrains = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Ревью ТЗ — анализ технических заданий",
+  title: "SPEC CHECK PRO — анализ технических заданий",
   description:
     "Загрузите ТЗ и получите документ с подсвеченными местами и комментариями HIGH / MEDIUM / LOW.",
 };

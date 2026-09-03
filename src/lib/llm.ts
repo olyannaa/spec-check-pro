@@ -194,7 +194,7 @@ ${knownBlock(opts.already)}
         Authorization: `Bearer ${opts.apiKey}`,
         "Content-Type": "application/json",
         Accept: "application/json",
-        "User-Agent": "NET-SpecCheck/1.0",
+        "User-Agent": "SPEC-CHECK-PRO/1.0",
       },
       body: JSON.stringify({
         model: opts.model,

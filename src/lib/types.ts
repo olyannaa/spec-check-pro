@@ -21,6 +21,7 @@ export type Finding = {
   ruleId?: string;
   section: string;
   quote: string;
+  sourceQuotes?: string[];
   why: string;
   ask: string;
   role: ReviewRole;

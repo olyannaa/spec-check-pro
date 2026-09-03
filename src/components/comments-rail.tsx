@@ -29,6 +29,8 @@ export function CommentsRail({
         const active = activeId === c.id;
         const status = statuses[c.id];
         const rejected = status === "rejected";
+        const missingSection =
+          c.anchors.length === 0 && /отсутств|не указан|не описан/i.test(c.quote);
         return (
           <div
             key={c.id}
@@ -90,7 +92,14 @@ export function CommentsRail({
                 </button>
               </span>
             </div>
-            <p className="mt-2 text-[12px] text-muted-foreground">{c.place}</p>
+            <p className="mt-2 flex flex-wrap items-center gap-2 text-[12px] text-muted-foreground">
+              <span>{c.place}</span>
+              {missingSection ? (
+                <span className="rounded-sm border border-border px-1.5 py-px text-[10px]">
+                  раздел отсутствует
+                </span>
+              ) : null}
+            </p>
             <p className="mt-1 text-[13px] leading-snug">{c.why}</p>
             <p className="mt-2 text-[13px] leading-snug text-foreground/80">
               {c.ask}

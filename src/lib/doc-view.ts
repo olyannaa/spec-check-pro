@@ -14,6 +14,7 @@ export type Anchor = {
   row?: number;
   col?: number;
   match: string;
+  primary?: boolean;
 };
 
 export type DocComment = {
@@ -117,12 +118,46 @@ export function parseBlocks(text: string): Block[] {
   return blocks;
 }
 
+const ABSENT_QUOTE = /(?:раздел|перечень|описание|данные|сериализац\w*)\s+(?:отсутств\w*|не\s+указан\w*|не\s+описан\w*)/i;
+const GENERIC_TABLE_VALUE = /^(?:string|bigint|timestamp|date|int|integer|boolean|number|varchar|text)$/i;
+
+function cleanQuote(value: string): string {
+  return value
+    .replace(/^\s*(?:[-•*]|\d+\.|#{1,3})\s+/, "")
+    .replace(/^\|+|\|+$/g, "")
+    .replace(/…$/, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function quoteCandidates(finding: Finding): string[] {
+  const raw = finding.sourceQuotes?.length ? finding.sourceQuotes : [finding.quote];
+  const candidates = raw.flatMap((value) => {
+    if (ABSENT_QUOTE.test(value)) return [];
+    return value.split(/\s+↔\s+/).flatMap((part) => {
+      const cells = part.includes("|") ? part.split("|") : [part];
+      return cells.map(cleanQuote);
+    });
+  });
+  return [...new Set(candidates)].filter(
+    (candidate) =>
+      candidate.length >= 3 &&
+      !/^[-:–—\d.]+$/.test(candidate) &&
+      !GENERIC_TABLE_VALUE.test(candidate),
+  );
+}
+
 function matchIn(text: string, quote: string): string | null {
-  const q = quote.replace(/\s+/g, " ").trim();
-  if (!q || q === "раздел отсутствует") return null;
-  if (text.includes(q)) return q.length > 96 ? q.slice(0, 96) : q;
+  const q = cleanQuote(quote);
+  if (!q) return null;
+  const haystack = text.toLocaleLowerCase("ru");
+  const needle = q.toLocaleLowerCase("ru");
+  const exactIndex = haystack.indexOf(needle);
+  if (exactIndex >= 0) {
+    return text.slice(exactIndex, exactIndex + Math.min(q.length, 96));
+  }
   const short = q.slice(0, 28);
-  const idx = text.indexOf(short);
+  const idx = haystack.indexOf(short.toLocaleLowerCase("ru"));
   if (idx >= 0) {
     return text.slice(idx, Math.min(text.length, idx + Math.min(q.length, 72)));
   }
@@ -135,25 +170,30 @@ export function commentsFromFindings(
 ): DocComment[] {
   return findings.map((f, n) => {
     const anchors: Anchor[] = [];
+    const candidates = quoteCandidates(f);
     for (let bi = 0; bi < blocks.length; bi++) {
       const block = blocks[bi];
       if (!block) continue;
       if (block.type === "table") {
         block.head.forEach((cell, ci) => {
-          const m = matchIn(cell, f.quote);
+          const m = candidates.map((q) => matchIn(cell, q)).find(Boolean);
           if (m) anchors.push({ block: bi, row: -1, col: ci, match: m });
         });
         block.rows.forEach((row, ri) => {
           row.forEach((cell, ci) => {
-            const m = matchIn(cell, f.quote);
+            const m = candidates.map((q) => matchIn(cell, q)).find(Boolean);
             if (m) anchors.push({ block: bi, row: ri, col: ci, match: m });
           });
         });
       } else {
-        const m = matchIn(block.text, f.quote);
+        const m = candidates.map((q) => matchIn(block.text, q)).find(Boolean);
         if (m) anchors.push({ block: bi, match: m });
       }
     }
+    const resolvedAnchors = anchors.slice(0, 3).map((anchor, index) => ({
+      ...anchor,
+      primary: index === 0,
+    }));
     return {
       id: f.id,
       n: n + 1,
@@ -165,7 +205,7 @@ export function commentsFromFindings(
       ask: f.ask,
       ruleId: f.ruleId,
       role: f.role,
-      anchors: anchors.slice(0, 3),
+      anchors: resolvedAnchors,
     };
   });
 }

@@ -62,6 +62,7 @@ async function main() {
         hasMarkdownTable: pages.some((p) => /\| ---/.test(p)),
         hasReviewChrome: pages.some(
           (p) =>
+            p.includes("SPEC CHECK PRO") ||
             p.includes("Ревью ТЗ") ||
             p.includes("Комментарии ревью") ||
             p.includes("Замечаний:"),

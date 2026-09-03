@@ -16,13 +16,13 @@ const markActiveClass: Record<MarkLevel, string> = {
 type Loc = { block: number; row?: number; col?: number };
 
 function anchorsFor(comments: DocComment[], loc: Loc) {
-  const out: { match: string; comment: DocComment }[] = [];
+  const out: { match: string; primary?: boolean; comment: DocComment }[] = [];
   for (const c of comments) {
     for (const a of c.anchors) {
       if (a.block !== loc.block) continue;
       if ((a.row ?? null) !== (loc.row ?? null)) continue;
       if ((a.col ?? null) !== (loc.col ?? null)) continue;
-      out.push({ match: a.match, comment: c });
+      out.push({ match: a.match, primary: a.primary, comment: c });
     }
   }
   return out;
@@ -46,13 +46,18 @@ function HighlightedText({
   const anchors = anchorsFor(comments, loc);
   if (anchors.length === 0) return <>{text}</>;
 
-  const ranges: { start: number; end: number; comment: DocComment }[] = [];
+  const ranges: {
+    start: number;
+    end: number;
+    primary?: boolean;
+    comment: DocComment;
+  }[] = [];
   for (const a of anchors) {
     const start = text.indexOf(a.match);
     if (start === -1) continue;
     const end = start + a.match.length;
     if (ranges.some((r) => start < r.end && end > r.start)) continue;
-    ranges.push({ start, end, comment: a.comment });
+    ranges.push({ start, end, primary: a.primary, comment: a.comment });
   }
   if (ranges.length === 0) return <>{text}</>;
   ranges.sort((x, y) => x.start - y.start);
@@ -71,7 +76,11 @@ function HighlightedText({
     parts.push(
       <mark
         key={`m${i}`}
-        id={`mark-${r.comment.id}`}
+        id={
+          r.primary
+            ? `mark-${r.comment.id}`
+            : `mark-${r.comment.id}-${loc.block}-${loc.row ?? "x"}-${loc.col ?? "x"}-${i}`
+        }
         onClick={() => onSelect(r.comment.id)}
         className={cn(
           "cursor-pointer rounded-[3px] px-0.5 text-foreground transition-all",
