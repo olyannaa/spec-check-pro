@@ -94,6 +94,7 @@ export function DocumentPreview({
   blocks,
   comments,
   activeId,
+  rejectedIds,
   onSelect,
   editing,
   onEdit,
@@ -102,6 +103,7 @@ export function DocumentPreview({
   blocks: Block[];
   comments: Comment[];
   activeId: string | null;
+  rejectedIds: Set<string>;
   onSelect: (id: string) => void;
   editing: boolean;
   onEdit: (index: number, next: Block) => void;
