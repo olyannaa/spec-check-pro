@@ -24,7 +24,7 @@ import {
   Shield,
   X,
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 type Stage = "input" | "loading" | "result";
 
@@ -44,7 +44,6 @@ export default function SpecCheckApp() {
   const [rules, setRules] = useState<Rule[]>(DEFAULT_RULES);
   const [rulesOpen, setRulesOpen] = useState(false);
   const [draftRules, setDraftRules] = useState<Rule[]>(DEFAULT_RULES);
-  const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const saved = localStorage.getItem("speccheck-rules");
@@ -173,245 +172,247 @@ export default function SpecCheckApp() {
   }
 
   return (
-    <main className="flex min-h-screen bg-background text-foreground">
-      <div
-        className={cn(
-          "min-w-0 flex-1 transition-all duration-500 ease-out",
-          open && "hidden lg:block lg:max-w-[34rem]",
-        )}
-      >
-        <header className="no-print sticky top-0 z-30 flex h-14 items-center justify-between border-b border-border bg-background/90 px-6 backdrop-blur">
-          <div className="flex items-center gap-2">
-            <span className="size-2.5 rounded-full bg-destructive" />
-            <span className="text-sm font-semibold tracking-tight">Ревью ТЗ</span>
-          </div>
-          <span className="font-mono text-[11px] tracking-wide text-muted-foreground uppercase">
-            Анализ технических заданий
-          </span>
-        </header>
+    <main className="relative min-h-screen bg-background text-foreground">
+      {!open ? (
+        <>
+          <header className="flex h-14 items-center justify-between border-b border-border bg-background px-6">
+            <div className="flex items-center gap-2">
+              <span className="size-2.5 rounded-full bg-destructive" />
+              <span className="text-sm font-semibold tracking-tight">Ревью ТЗ</span>
+            </div>
+            <span className="font-mono text-[11px] tracking-wide text-muted-foreground uppercase">
+              Анализ технических заданий
+            </span>
+          </header>
 
-        <section
-          className={cn(
-            "no-print mx-auto w-full max-w-3xl px-6 pb-16",
-            open ? "pt-10" : "pt-20",
-          )}
-        >
-          <h1
-            className={cn(
-              "text-center font-semibold tracking-tight text-balance",
-              open ? "text-2xl" : "text-4xl",
-            )}
-          >
-            Проверим ваше ТЗ на логические ошибки
-          </h1>
-          <p className="mt-4 text-center text-[15px] text-muted-foreground text-balance">
-            Прикрепите документ (Word или PDF) либо вставьте текст технического задания.
-            Замечания — HIGH, MEDIUM и LOW. Текст сам не переписываю.
-          </p>
+          <section className="mx-auto w-full max-w-3xl px-6 pb-16 pt-20">
+            <h1 className="text-center text-4xl font-semibold tracking-tight text-balance">
+              Проверим ваше ТЗ на логические ошибки
+            </h1>
+            <p className="mt-4 text-center text-[15px] text-muted-foreground text-balance">
+              Прикрепите документ (Word или PDF) либо вставьте текст технического задания.
+              Замечания — HIGH, MEDIUM и LOW. Текст сам не переписываю.
+            </p>
 
-          {error ? (
-            <p className="mt-4 text-center text-sm text-destructive">{error}</p>
-          ) : null}
-
-          <div className="relative z-10 mt-10 rounded-2xl border border-border bg-card p-2 shadow-[0_1px_2px_rgba(0,0,0,0.04),0_12px_40px_-24px_rgba(0,0,0,0.4)] transition-colors focus-within:border-foreground/40">
-            <textarea
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              placeholder="Опишите контекст или вставьте текст ТЗ целиком…"
-              rows={5}
-              className="w-full resize-none bg-transparent px-4 pt-3 pb-2 text-[15px] outline-none placeholder:text-muted-foreground"
-            />
-            {file ? (
-              <div className="mx-4 mb-2 inline-flex items-center gap-2 rounded-md border border-border bg-secondary px-2.5 py-1.5 text-[13px]">
-                <FileText className="size-3.5" />
-                <span className="max-w-[18rem] truncate">{file.name}</span>
-                <button
-                  onClick={() => setFile(null)}
-                  className="text-muted-foreground hover:text-destructive"
-                  aria-label="Удалить файл"
-                >
-                  <X className="size-3.5" />
-                </button>
-              </div>
+            {error ? (
+              <p className="mt-4 text-center text-sm text-destructive">{error}</p>
             ) : null}
 
-            {rulesOpen ? (
-              <RulesEditor
-                draft={draftRules}
-                onChange={setDraftRules}
-                onCancel={() => setRulesOpen(false)}
-                onSave={saveRules}
+            <div className="mt-10 rounded-2xl border border-border bg-card p-2 shadow-[0_1px_2px_rgba(0,0,0,0.04),0_12px_40px_-24px_rgba(0,0,0,0.4)]">
+              <textarea
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+                placeholder="Опишите контекст или вставьте текст ТЗ целиком…"
+                rows={5}
+                className="w-full resize-none bg-transparent px-4 pt-3 pb-2 text-[15px] outline-none placeholder:text-muted-foreground"
               />
-            ) : null}
+              {file ? (
+                <div className="mx-4 mb-2 inline-flex items-center gap-2 rounded-md border border-border bg-secondary px-2.5 py-1.5 text-[13px]">
+                  <FileText className="size-3.5" />
+                  <span className="max-w-[18rem] truncate">{file.name}</span>
+                  <button
+                    type="button"
+                    onClick={() => setFile(null)}
+                    className="text-muted-foreground hover:text-destructive"
+                    aria-label="Удалить файл"
+                  >
+                    <X className="size-3.5" />
+                  </button>
+                </div>
+              ) : null}
 
-            <div className="relative z-10 flex items-center justify-between gap-2 px-2 pb-1">
-              <div className="flex flex-wrap items-center gap-1">
-                <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground">
-                  <Paperclip className="size-4" />
-                  Прикрепить файл
-                  <input
-                    ref={fileRef}
-                    type="file"
-                    accept=".pdf,.txt,.md,.doc,.docx,application/pdf"
-                    className="sr-only"
-                    onChange={(e) => {
-                      const f = e.target.files?.[0];
-                      if (f) setFile(f);
-                      e.target.value = "";
+              {rulesOpen ? (
+                <RulesEditor
+                  draft={draftRules}
+                  onChange={setDraftRules}
+                  onCancel={() => setRulesOpen(false)}
+                  onSave={saveRules}
+                />
+              ) : null}
+
+              <div className="flex items-center justify-between gap-2 px-2 pb-1">
+                <div className="flex flex-wrap items-center gap-1">
+                  <label className="relative inline-flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground">
+                    <Paperclip className="size-4" />
+                    Прикрепить файл
+                    <input
+                      type="file"
+                      accept=".pdf,.txt,.md,.doc,.docx,application/pdf"
+                      className="absolute inset-0 z-10 cursor-pointer opacity-0"
+                      onChange={(e) => {
+                        const f = e.target.files?.[0];
+                        if (f) setFile(f);
+                        e.target.value = "";
+                      }}
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDraftRules(rules);
+                      setRulesOpen((v) => !v);
                     }}
-                  />
-                </label>
+                    className="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+                  >
+                    <Shield className="size-4" />
+                    Обновить 8 обязательных правил
+                  </button>
+                </div>
                 <button
                   type="button"
-                  onClick={() => {
-                    setDraftRules(rules);
-                    setRulesOpen((v) => !v);
-                  }}
-                  className="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+                  onClick={() => void analyze()}
+                  disabled={!canSend || stage === "loading"}
+                  className={cn(
+                    "inline-flex size-10 items-center justify-center rounded-full transition-all",
+                    canSend
+                      ? "bg-destructive text-destructive-foreground hover:opacity-90"
+                      : "bg-secondary text-muted-foreground",
+                  )}
+                  aria-label="Отправить на анализ"
                 >
-                  <Shield className="size-4" />
-                  Обновить 8 обязательных правил
+                  {stage === "loading" ? (
+                    <Loader2 className="size-4 animate-spin" />
+                  ) : (
+                    <ArrowUp className="size-4" />
+                  )}
                 </button>
               </div>
-              <button
-                type="button"
-                onClick={() => void analyze()}
-                disabled={!canSend || stage === "loading"}
-                className={cn(
-                  "inline-flex size-10 items-center justify-center rounded-full transition-all",
-                  canSend
-                    ? "bg-destructive text-destructive-foreground hover:opacity-90"
-                    : "bg-secondary text-muted-foreground",
-                )}
-                aria-label="Отправить на анализ"
-              >
-                {stage === "loading" ? (
-                  <Loader2 className="size-4 animate-spin" />
-                ) : (
-                  <ArrowUp className="size-4" />
-                )}
-              </button>
             </div>
-          </div>
 
-          <div className="mt-6 flex flex-wrap justify-center gap-2">
-            {SAMPLE_DOCS.map((s) => (
+            <div className="mt-6 flex flex-wrap justify-center gap-2">
+              {SAMPLE_DOCS.map((s) => (
+                <button
+                  key={s.id}
+                  type="button"
+                  onClick={() => void loadSample(s.id, s.title)}
+                  className="rounded-full border border-border px-3 py-1.5 text-[12px] text-muted-foreground hover:border-foreground hover:text-foreground"
+                >
+                  {s.title}
+                </button>
+              ))}
+            </div>
+          </section>
+        </>
+      ) : (
+        <div className="flex min-h-screen">
+          <div className="hidden min-w-0 lg:block lg:max-w-[34rem] lg:flex-none lg:border-r lg:border-border">
+            <header className="flex h-14 items-center gap-2 border-b border-border px-6">
+              <span className="size-2.5 rounded-full bg-destructive" />
+              <span className="text-sm font-semibold tracking-tight">Ревью ТЗ</span>
+            </header>
+            <section className="px-6 py-10">
+              <p className="text-lg font-semibold">Новая проверка</p>
               <button
-                key={s.id}
                 type="button"
-                onClick={() => void loadSample(s.id, s.title)}
-                className="rounded-full border border-border px-3 py-1.5 text-[12px] text-muted-foreground hover:border-foreground hover:text-foreground"
-              >
-                {s.title}
-              </button>
-            ))}
-          </div>
-        </section>
-      </div>
-
-      <aside
-        className={cn(
-          "flex h-screen min-w-0 shrink-0 flex-col overflow-hidden border-l border-border bg-background transition-all duration-500 ease-out",
-          open
-            ? "sticky top-0 w-full lg:flex-1"
-            : "pointer-events-none w-0 border-l-0",
-        )}
-        aria-hidden={!open}
-      >
-        {open && stats ? (
-          <>
-            <div className="no-print flex flex-wrap items-center gap-3 border-b border-border px-6 py-3">
-              <div className="mr-auto min-w-0">
-                <p className="truncate text-sm font-semibold">{title}</p>
-                <p className="mt-0.5 flex items-center gap-3 text-[12px] text-muted-foreground">
-                  <span>Замечаний: {stats.total}</span>
-                  <span className="inline-flex items-center gap-1">
-                    <i className="size-2 rounded-full bg-crit" />
-                    HIGH {stats.crit}
-                  </span>
-                  <span className="inline-flex items-center gap-1">
-                    <i className="size-2 rounded-full bg-warn" />
-                    MEDIUM {stats.warn}
-                  </span>
-                  <span className="inline-flex items-center gap-1">
-                    <i className="size-2 rounded-full bg-note" />
-                    LOW {stats.note}
-                  </span>
-                </p>
-                {summary ? (
-                  <p className="mt-1 max-w-xl text-[12px] text-muted-foreground">
-                    {summary}
-                  </p>
-                ) : null}
-              </div>
-              <button
-                onClick={() => setEditing((v) => !v)}
-                className={cn(
-                  "inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-[13px] transition-colors",
-                  editing
-                    ? "border-destructive bg-destructive text-destructive-foreground"
-                    : "border-border hover:border-foreground",
-                )}
-              >
-                {editing ? <Check className="size-3.5" /> : <Pencil className="size-3.5" />}
-                {editing ? "Готово" : "Исправить текст"}
-              </button>
-              <button
-                onClick={downloadMd}
-                className="inline-flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-[13px] transition-colors hover:border-foreground"
-              >
-                <Download className="size-3.5" />
-                Word
-              </button>
-              <button
-                onClick={() => window.print()}
-                className="inline-flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-[13px] transition-colors hover:border-foreground"
-              >
-                <Download className="size-3.5" />
-                PDF
-              </button>
-              <button
                 onClick={reset}
-                className="inline-flex size-9 items-center justify-center rounded-lg border border-border transition-colors hover:border-foreground"
-                aria-label="Закрыть"
+                className="mt-4 rounded-lg border border-border px-3 py-2 text-sm hover:border-foreground"
               >
-                <X className="size-4" />
+                Загрузить другое ТЗ
               </button>
-            </div>
+            </section>
+          </div>
 
-            <div className="print-area flex min-h-0 flex-1 overflow-hidden">
-              <div className="min-w-0 flex-1 overflow-y-auto">
-                <DocumentPreview
-                  title={title}
-                  blocks={blocks}
-                  comments={comments}
-                  activeId={activeId}
-                  rejectedIds={rejectedIds}
-                  onSelect={select}
-                  editing={editing}
-                  onEdit={(i, next) =>
-                    setBlocks((prev) => prev.map((b, bi) => (bi === i ? next : b)))
-                  }
-                />
-              </div>
-              <div className="no-print hidden w-[24rem] shrink-0 overflow-y-auto border-l border-border bg-secondary/30 p-4 lg:block">
-                <p className="mb-3 px-1 font-mono text-[11px] tracking-wide text-muted-foreground uppercase">
-                  Комментарии
-                </p>
-                <CommentsRail
-                  comments={comments}
-                  activeId={activeId}
-                  statuses={statuses}
-                  onSelect={select}
-                  onStatus={(id, status) =>
-                    setStatuses((prev) => ({ ...prev, [id]: status }))
-                  }
-                />
-              </div>
-            </div>
-          </>
-        ) : null}
-      </aside>
+          <section className="flex min-h-screen min-w-0 flex-1 flex-col">
+            {stats ? (
+              <>
+                <div className="no-print flex flex-wrap items-center gap-3 border-b border-border px-6 py-3">
+                  <div className="mr-auto min-w-0">
+                    <p className="truncate text-sm font-semibold">{title}</p>
+                    <p className="mt-0.5 flex items-center gap-3 text-[12px] text-muted-foreground">
+                      <span>Замечаний: {stats.total}</span>
+                      <span className="inline-flex items-center gap-1">
+                        <i className="size-2 rounded-full bg-crit" />
+                        HIGH {stats.crit}
+                      </span>
+                      <span className="inline-flex items-center gap-1">
+                        <i className="size-2 rounded-full bg-warn" />
+                        MEDIUM {stats.warn}
+                      </span>
+                      <span className="inline-flex items-center gap-1">
+                        <i className="size-2 rounded-full bg-note" />
+                        LOW {stats.note}
+                      </span>
+                    </p>
+                    {summary ? (
+                      <p className="mt-1 max-w-xl text-[12px] text-muted-foreground">
+                        {summary}
+                      </p>
+                    ) : null}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setEditing((v) => !v)}
+                    className={cn(
+                      "inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-[13px] transition-colors",
+                      editing
+                        ? "border-destructive bg-destructive text-destructive-foreground"
+                        : "border-border hover:border-foreground",
+                    )}
+                  >
+                    {editing ? <Check className="size-3.5" /> : <Pencil className="size-3.5" />}
+                    {editing ? "Готово" : "Исправить текст"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={downloadMd}
+                    className="inline-flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-[13px] hover:border-foreground"
+                  >
+                    <Download className="size-3.5" />
+                    Word
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => window.print()}
+                    className="inline-flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-[13px] hover:border-foreground"
+                  >
+                    <Download className="size-3.5" />
+                    PDF
+                  </button>
+                  <button
+                    type="button"
+                    onClick={reset}
+                    className="inline-flex size-9 items-center justify-center rounded-lg border border-border hover:border-foreground"
+                    aria-label="Закрыть"
+                  >
+                    <X className="size-4" />
+                  </button>
+                </div>
+
+                <div className="print-area flex min-h-0 flex-1 overflow-hidden">
+                  <div className="min-w-0 flex-1 overflow-y-auto">
+                    <DocumentPreview
+                      title={title}
+                      blocks={blocks}
+                      comments={comments}
+                      activeId={activeId}
+                      rejectedIds={rejectedIds}
+                      onSelect={select}
+                      editing={editing}
+                      onEdit={(i, next) =>
+                        setBlocks((prev) => prev.map((b, bi) => (bi === i ? next : b)))
+                      }
+                    />
+                  </div>
+                  <div className="no-print hidden w-[24rem] shrink-0 overflow-y-auto border-l border-border bg-secondary/30 p-4 lg:block">
+                    <p className="mb-3 px-1 font-mono text-[11px] tracking-wide text-muted-foreground uppercase">
+                      Комментарии
+                    </p>
+                    <CommentsRail
+                      comments={comments}
+                      activeId={activeId}
+                      statuses={statuses}
+                      onSelect={select}
+                      onStatus={(id, status) =>
+                        setStatuses((prev) => ({ ...prev, [id]: status }))
+                      }
+                    />
+                  </div>
+                </div>
+              </>
+            ) : null}
+          </section>
+        </div>
+      )}
     </main>
   );
 }
