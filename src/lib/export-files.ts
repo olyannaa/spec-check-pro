@@ -49,7 +49,8 @@ function clean(text: string): string {
 }
 
 function run(text: string, extra: ConstructorParameters<typeof TextRun>[0] = {}) {
-  return new TextRun({ text: clean(text), font: "Calibri", ...extra });
+  const safe = typeof extra === "object" && extra !== null ? (extra as object) : {};
+  return new TextRun({ text: clean(text), font: "Calibri", ...safe });
 }
 
 const cellBorder = {
