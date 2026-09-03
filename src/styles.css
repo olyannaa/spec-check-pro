@@ -159,16 +159,34 @@
 }
 
 @utility mark-3 {
-  background: color-mix(in oklab, var(--crit-soft) 85%, white);
+  background: color-mix(in oklab, var(--crit-soft) 55%, white);
   box-shadow: inset 0 -2px 0 0 var(--crit);
+  opacity: 0.7;
+}
+@utility mark-3-active {
+  background: color-mix(in oklab, var(--crit-soft) 92%, white);
+  box-shadow: inset 0 -2px 0 0 var(--crit);
+  opacity: 1;
 }
 @utility mark-2 {
-  background: color-mix(in oklab, var(--warn-soft) 85%, white);
+  background: color-mix(in oklab, var(--warn-soft) 55%, white);
   box-shadow: inset 0 -2px 0 0 var(--warn);
+  opacity: 0.7;
+}
+@utility mark-2-active {
+  background: color-mix(in oklab, var(--warn-soft) 92%, white);
+  box-shadow: inset 0 -2px 0 0 var(--warn);
+  opacity: 1;
 }
 @utility mark-1 {
-  background: color-mix(in oklab, var(--note-soft) 85%, white);
+  background: color-mix(in oklab, var(--note-soft) 55%, white);
   box-shadow: inset 0 -2px 0 0 var(--note);
+  opacity: 0.7;
+}
+@utility mark-1-active {
+  background: color-mix(in oklab, var(--note-soft) 92%, white);
+  box-shadow: inset 0 -2px 0 0 var(--note);
+  opacity: 1;
 }
 
 @layer base {
