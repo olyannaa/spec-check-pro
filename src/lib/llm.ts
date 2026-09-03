@@ -1,11 +1,11 @@
 import type { Finding, ReviewResult, Rule, Verdict } from "./types";
 
-const FREE_MODEL = "moonshotai/kimi-k2-instruct";
+const FREE_MODEL = "qwen/qwen3.8-27b";
 const FREE_BASE = "https://api.groq.com/openai/v1";
 
 function extractJson(text: string): { findings?: Finding[] } | null {
   const fenced = text.match(/```json\s*([\s\S]*?)```/i);
-  const raw = fenced?.[1] ?? text;
+  const raw = (fenced?.[1] ?? text).replace(/<think>[\s\S]*?<\/think>/gi, "");
   const start = raw.indexOf("{");
   const end = raw.lastIndexOf("}");
   if (start < 0 || end <= start) return null;
@@ -16,16 +16,19 @@ function extractJson(text: string): { findings?: Finding[] } | null {
   }
 }
 
+function env(name: string): string | undefined {
+  return process.env[name];
+}
+
 export async function enrichWithQwen(
   document: string,
   rules: Rule[],
   seed: Finding[],
 ): Promise<{ findings: Finding[]; used: boolean; model: string }> {
-  const groqKey = process.env.GROQ_API_KEY;
-  const apiKey =
-    groqKey ?? process.env.OPENAI_API_KEY ?? process.env.DASHSCOPE_API_KEY;
-  const baseUrl = process.env.OPENAI_BASE_URL ?? FREE_BASE;
-  const model = process.env.OPENAI_MODEL ?? FREE_MODEL;
+  const groqKey = env("GROQ_API_KEY");
+  const apiKey = groqKey ?? env("OPENAI_API_KEY") ?? env("DASHSCOPE_API_KEY");
+  const baseUrl = env("OPENAI_BASE_URL") ?? FREE_BASE;
+  const model = env("OPENAI_MODEL") ?? FREE_MODEL;
 
   if (!apiKey) {
     return { findings: seed, used: false, model };
@@ -59,21 +62,26 @@ ${JSON.stringify(seed.map((f) => ({ section: f.section, ask: f.ask, quote: f.quo
       headers: {
         Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json",
+        Accept: "application/json",
+        "User-Agent": "NET-SpecCheck/1.0",
       },
       body: JSON.stringify({
         model,
         temperature: 0.2,
+        reasoning_format: "hidden",
         messages: [
           {
             role: "system",
             content:
-              "Ты ревьюер документации NET. Отвечаешь только JSON. Русский язык.",
+              "Ты ревьюер документации NET. Отвечаешь только JSON. Русский язык. Без размышлений.",
           },
           { role: "user", content: prompt },
         ],
       }),
     });
     if (!res.ok) {
+      const errText = await res.text().catch(() => "");
+      console.warn("LLM request failed", res.status, errText.slice(0, 300));
       return { findings: seed, used: false, model };
     }
     const data = (await res.json()) as {
@@ -92,7 +100,8 @@ ${JSON.stringify(seed.map((f) => ({ section: f.section, ask: f.ask, quote: f.quo
       role: f.role ?? "developer",
     }));
     return { findings: mergeFindings(seed, extra), used: true, model };
-  } catch {
+  } catch (err) {
+    console.warn("LLM request error", err);
     return { findings: seed, used: false, model };
   }
 }
