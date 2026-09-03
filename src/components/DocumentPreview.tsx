@@ -1,4 +1,4 @@
-import { Fragment } from "react";
+import { Fragment, type ReactNode } from "react";
 import type { Block, Comment, Severity } from "@/data/types";
 import { cn } from "@/lib/utils";
 
@@ -6,6 +6,12 @@ const markClass: Record<Severity, string> = {
   3: "mark-3",
   2: "mark-2",
   1: "mark-1",
+};
+
+const markActiveClass: Record<Severity, string> = {
+  3: "mark-3-active",
+  2: "mark-2-active",
+  1: "mark-1-active",
 };
 
 type Loc = { block: number; row?: number; col?: number };
