@@ -1,8 +1,8 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { extractText, getDocumentProxy } from "unpdf";
-import { parseBlocks } from "../src/lib/doc-view.ts";
-import { buildDocx, buildPdf } from "../src/lib/export-files.ts";
-import { pdfBufferToMarkdown } from "../src/lib/pdf-layout.ts";
+import { parseBlocks } from "../src/lib/doc-view";
+import { buildDocx, buildPdf } from "../src/lib/export-files";
+import { pdfBufferToMarkdown } from "../src/lib/pdf-layout";
 
 async function main() {
   const md = await pdfBufferToMarkdown(
