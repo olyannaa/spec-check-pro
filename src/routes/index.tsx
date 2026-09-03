@@ -10,7 +10,7 @@ import {
   Check,
   X,
 } from "lucide-react";
-import { DOCS, matchDoc } from "@/data";
+import { matchDoc } from "@/data";
 import type { Block, ReviewDoc } from "@/data/types";
 import { DocumentPreview } from "@/components/DocumentPreview";
 import { CommentsRail } from "@/components/CommentsRail";
