@@ -74,12 +74,12 @@
   --radius: 0.5rem;
   --background: oklch(1 0 0);
   --foreground: oklch(0.16 0 0);
-  --crit: oklch(0.55 0.22 27);
-  --crit-soft: oklch(0.9 0.09 25);
-  --warn: oklch(0.62 0.16 62);
-  --warn-soft: oklch(0.92 0.09 85);
-  --note: oklch(0.5 0.02 260);
-  --note-soft: oklch(0.92 0.01 260);
+  --crit: oklch(0.68 0.15 25);
+  --crit-soft: oklch(0.9 0.07 25);
+  --warn: oklch(0.72 0.13 350);
+  --warn-soft: oklch(0.92 0.06 350);
+  --note: oklch(0.7 0.1 230);
+  --note-soft: oklch(0.93 0.05 230);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.129 0.042 264.695);
   --popover: oklch(1 0 0);

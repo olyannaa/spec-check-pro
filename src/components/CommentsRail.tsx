@@ -36,14 +36,7 @@ export function CommentsRail({
               <span className="text-[11px] font-medium tracking-wide uppercase text-muted-foreground">
                 {m.label}
               </span>
-              <span className="ml-auto font-mono text-[11px] text-muted-foreground">
-                #{c.n}
-              </span>
             </div>
-            <p className="mt-2 text-[12px] text-muted-foreground">{c.place}</p>
-            <p className="mt-2 border-l-2 border-border pl-2 text-[12px] italic text-muted-foreground">
-              {c.quote}
-            </p>
             <p className="mt-2 text-[13px] leading-snug">{c.fix}</p>
           </button>
         );
