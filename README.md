@@ -1,14 +1,24 @@
-# Welcome to your Lovable project
+# Spec Check Pro
+
+Привет!
+Мне нужно одностраничное веб-приложение со следующим функционалом:
+Большое окно для ввода текста. В нем можно прикрепить файл с ТЗ (word и pdf). В это окно пользователь вводит контекст или целиком документ тз (просто в формате текста). 
+В будущем приложение будет: анализировать документ ТЗ, находить логические ошибки в содержании и выдавать результат, но сейчас мы этот проццесс делать не будем, а просто сделаем вид (потому что мы пока не сможем подключить модельку ллм). 
+Итак: пользователь загружает документ, отправляет контекст и нажимает отправить - после этого открывается боковое окно с предпросмотртом получившегося документа с комментариями по поводу ошибок. Комментарии должны быть в таком формате: в самом тексте документа выделяются маркером участки или слова - а сбоку комментарий к этому участку. Комментарии могут быть трех видов: супер критические, средне и просто слабые на что обратить внимание или уточнить (соответсвенно маркеры сделать 3 цветов).
+Сам интерфейс очень минималистичный современный стильный  белый, черный и красный. 
+Вне зависимости от того какой формат файла загрузил пользователь (или текст) мы отображаем его в интерфейсе как нередактируемый документ. Скачать этот документ можно из системы в виде pdf или word. Исправлять ошибки в документе (редактировать текст) можно в самом окне предпросмотра при нажатии кнопки.
+
+Ниже приведены документы и текст ошибок в нем. Потом когда я буду тестировать нтерфейс я буду исползовать только эти документы, поэтому никакие новые комментарии добавлять не надо.
 
 This project was built with [Lovable](https://lovable.dev).
 
 ## Build with Lovable
 
-Open your project in the [Lovable editor](https://lovable.dev) and keep building.
+Continue developing this project in the [Lovable editor](https://lovable.dev/projects/ed1e8a0c-331f-4f4c-8d06-28b0a05403d4).
 
 - **Ship faster**: describe what you want to build and Lovable handles the code.
-- **Stay in sync**: connect the project to GitHub and every change made in Lovable is committed straight to your repository.
-- **Full ownership**: this code is yours. Push to your repository and your changes sync back into Lovable, ready for your next prompt.
+- **Stay in sync**: every change made in Lovable is committed straight to this repository.
+- **Full ownership**: this code is yours. Push to `main` on GitHub and your changes sync back into Lovable, ready for your next prompt.
 
 ## Development
 
@@ -20,10 +30,3 @@ cd <repository-name>
 npm i
 npm run dev
 ```
-
-## Built with
-
-- TanStack Start
-- TypeScript
-- React
-- Tailwind CSS
