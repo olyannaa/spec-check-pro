@@ -24,7 +24,7 @@ export async function POST(req: Request) {
 
   const bytes =
     format === "pdf" ? await buildPdf(body.report) : await buildDocx(body.report);
-  const name = `${fileStem(body.report.title)}_ревью.${format}`;
+  const name = `${fileStem(body.report.title)}.${format}`;
 
   return new Response(new Uint8Array(bytes), {
     headers: {

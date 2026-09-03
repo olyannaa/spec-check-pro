@@ -208,7 +208,7 @@ export default function SpecCheckApp() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `${fileStem(title)}_ревью.${format === "pdf" ? "pdf" : "docx"}`;
+      a.download = `${fileStem(title)}.${format === "pdf" ? "pdf" : "docx"}`;
       document.body.appendChild(a);
       a.click();
       a.remove();

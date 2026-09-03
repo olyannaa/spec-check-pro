@@ -93,6 +93,7 @@ export function reportBlocks(report: ExportReport): Block[] {
 
 export function fileStem(title: string): string {
   const stem = title
+    .replace(/\.(pdf|docx?|txt|md)$/i, "")
     .replace(/[^\p{L}\p{N}._-]+/gu, "_")
     .replace(/^_+|_+$/g, "")
     .slice(0, 80);

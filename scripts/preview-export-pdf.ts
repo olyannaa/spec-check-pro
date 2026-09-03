@@ -60,8 +60,13 @@ async function main() {
         totalPages,
         hasMarkdownHeading: pages.some((p) => /## /.test(p)),
         hasMarkdownTable: pages.some((p) => /\| ---/.test(p)),
-        hasCommentsSection: pages.some((p) => p.includes("Комментарии ревью")),
-        hasTzSection: pages.some((p) => p.includes("Техническое задание")),
+        hasReviewChrome: pages.some(
+          (p) =>
+            p.includes("Ревью ТЗ") ||
+            p.includes("Комментарии ревью") ||
+            p.includes("Замечаний:"),
+        ),
+        startsWithDescription: pages[0]?.includes("Описание") ?? false,
         pageStarts: pages.map((p, i) => ({
           n: i + 1,
           chars: p.length,
