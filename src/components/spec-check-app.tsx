@@ -440,7 +440,10 @@ export default function SpecCheckApp() {
                       }
                     />
                   </div>
-                  <div className="no-print no-scroll-anchor max-h-[42vh] shrink-0 overflow-y-auto border-t border-border bg-secondary/30 p-4 lg:max-h-none lg:w-[24rem] lg:border-l lg:border-t-0">
+                  <div
+                    id="comments-scroll"
+                    className="no-print no-scroll-anchor max-h-[42vh] shrink-0 overflow-y-auto border-t border-border bg-secondary/30 p-4 lg:max-h-none lg:w-[24rem] lg:border-l lg:border-t-0"
+                  >
                     <p className="mb-3 px-1 font-mono text-[11px] tracking-wide text-muted-foreground uppercase">
                       Комментарии
                     </p>

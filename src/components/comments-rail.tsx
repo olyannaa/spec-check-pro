@@ -1,4 +1,4 @@
-import { Check, Link2, Undo2 } from "lucide-react";
+import { Check, Undo2 } from "lucide-react";
 import {
   isLinkedComment,
   type CommentStatus,
@@ -18,14 +18,12 @@ function CommentCard({
   comment: c,
   active,
   status,
-  linkable,
   onSelect,
   onStatus,
 }: {
   comment: DocComment;
   active: boolean;
   status: CommentStatus;
-  linkable: boolean;
   onSelect: (id: string) => void;
   onStatus: (id: string, status: CommentStatus) => void;
 }) {
@@ -34,15 +32,11 @@ function CommentCard({
   return (
     <div
       id={`comment-${c.id}`}
-      role="button"
-      tabIndex={0}
-      onClick={() => onSelect(c.id)}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          onSelect(c.id);
-        }
+      onMouseDown={(e) => {
+        if ((e.target as HTMLElement).closest("button")) return;
+        e.preventDefault();
       }}
+      onClick={() => onSelect(c.id)}
       className={cn(
         "block w-full cursor-pointer rounded-lg border bg-card p-4 text-left transition-all",
         active ? cn("border-foreground shadow-sm", m.ring) : "border-border hover:border-foreground/40",
@@ -65,6 +59,7 @@ function CommentCard({
         <span className="ml-auto flex items-center gap-1">
           <button
             type="button"
+            onMouseDown={(e) => e.stopPropagation()}
             onClick={(e) => {
               e.stopPropagation();
               onStatus(c.id, status === "accepted" ? null : "accepted");
@@ -82,6 +77,7 @@ function CommentCard({
           </button>
           <button
             type="button"
+            onMouseDown={(e) => e.stopPropagation()}
             onClick={(e) => {
               e.stopPropagation();
               onStatus(c.id, rejected ? null : "rejected");
@@ -102,10 +98,6 @@ function CommentCard({
       <p className="mt-2 text-[12px] text-muted-foreground">{c.place}</p>
       <p className="mt-1 text-[13px] leading-snug">{c.why}</p>
       <p className="mt-2 text-[13px] leading-snug text-foreground/80">{c.ask}</p>
-      <p className="mt-3 inline-flex items-center gap-1 text-[12px] text-foreground underline-offset-2 hover:underline">
-        <Link2 className="size-3.5" />
-        {linkable ? "Перейти к месту в ТЗ" : "Перейти к общему замечанию"}
-      </p>
     </div>
   );
 }
@@ -140,7 +132,6 @@ export function CommentsRail({
                 comment={c}
                 active={activeId === c.id}
                 status={statuses[c.id] ?? null}
-                linkable
                 onSelect={onSelect}
                 onStatus={onStatus}
               />
@@ -164,7 +155,6 @@ export function CommentsRail({
                 comment={c}
                 active={activeId === c.id}
                 status={statuses[c.id] ?? null}
-                linkable={false}
                 onSelect={onSelect}
                 onStatus={onStatus}
               />
