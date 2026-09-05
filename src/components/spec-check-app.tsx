@@ -12,7 +12,7 @@ import {
 import { buildExportReport, fileStem } from "@/lib/export-report";
 import { scrollDocumentTo } from "@/lib/scroll-doc";
 import { blankRule, DEFAULT_RULES, nextRuleId } from "@/lib/rules";
-import { TEST_TEMPLATE, TEST_TEMPLATE_TITLE } from "@/lib/test-template";
+import { TEST_PRESETS } from "@/lib/test-template";
 import { ROLE_LABELS, type ReviewResult, type ReviewRole, type Rule } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import {
@@ -340,24 +340,28 @@ export default function SpecCheckApp() {
               </div>
             </div>
 
-            <div className="mt-5 flex flex-col items-center gap-2">
-              <button
-                type="button"
-                disabled={stage === "loading"}
-                onClick={() =>
-                  void analyze({ text: TEST_TEMPLATE, title: TEST_TEMPLATE_TITLE })
-                }
-                className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-border bg-card px-4 py-2.5 text-sm font-medium hover:border-foreground disabled:opacity-50"
-              >
-                {stage === "loading" ? (
-                  <Loader2 className="size-4 animate-spin" />
-                ) : (
-                  <Beaker className="size-4" />
-                )}
-                Проверить тестовый шаблон
-              </button>
-              <p className="text-center text-[12px] text-muted-foreground">
-                Вшитое демо-ТЗ витрины — без файла и без вставки текста.
+            <div className="mt-5 flex flex-col items-center gap-3">
+              <div className="flex flex-wrap items-center justify-center gap-2">
+                {TEST_PRESETS.map((preset) => (
+                  <button
+                    key={preset.id}
+                    type="button"
+                    disabled={stage === "loading"}
+                    onClick={() => void analyze({ text: preset.text, title: preset.title })}
+                    className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-border bg-card px-4 py-2.5 text-sm font-medium hover:border-foreground disabled:opacity-50"
+                  >
+                    {stage === "loading" ? (
+                      <Loader2 className="size-4 animate-spin" />
+                    ) : (
+                      <Beaker className="size-4" />
+                    )}
+                    {preset.label}
+                  </button>
+                ))}
+              </div>
+              <p className="max-w-md text-center text-[12px] text-muted-foreground">
+                Короткий шаблон — быстрый прогон. Полный набор — все 8 правил, таблицы,
+                противоречия и ошибки полей. Файл не нужен.
               </p>
             </div>
           </section>
