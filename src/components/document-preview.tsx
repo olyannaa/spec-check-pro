@@ -28,6 +28,16 @@ function anchorsFor(comments: DocComment[], loc: Loc) {
   return out;
 }
 
+function isPrimaryAnchor(comment: DocComment, loc: Loc): boolean {
+  const a = comment.anchors[0];
+  if (!a) return false;
+  return (
+    a.block === loc.block &&
+    (a.row ?? null) === (loc.row ?? null) &&
+    (a.col ?? null) === (loc.col ?? null)
+  );
+}
+
 function HighlightedText({
   text,
   comments,
@@ -71,8 +81,11 @@ function HighlightedText({
     parts.push(
       <mark
         key={`m${i}`}
-        id={`mark-${r.comment.id}`}
-        onClick={() => onSelect(r.comment.id)}
+        id={isPrimaryAnchor(r.comment, loc) ? `mark-${r.comment.id}` : undefined}
+        onClick={(e) => {
+          e.stopPropagation();
+          onSelect(r.comment.id);
+        }}
         className={cn(
           "cursor-pointer rounded-[3px] px-0.5 text-foreground transition-all",
           markClass[r.comment.severity],
@@ -121,7 +134,7 @@ export function DocumentPreview({
       {blocks.map((block, i) => {
         if (block.type === "table") {
           return (
-            <div key={i} className="my-5 overflow-x-auto">
+            <div key={i} id={`doc-block-${i}`} className="my-5 overflow-x-auto">
               <table className="w-full border-collapse text-[13px]">
                 <thead>
                   <tr>
@@ -221,28 +234,36 @@ export function DocumentPreview({
         );
         if (block.type === "h1") {
           return (
-            <h1 key={i} className="mt-2 mb-4 text-2xl font-semibold tracking-tight">
+            <h1
+              key={i}
+              id={`doc-block-${i}`}
+              className="mt-2 mb-4 text-2xl font-semibold tracking-tight"
+            >
               {inner}
             </h1>
           );
         }
         if (block.type === "h2") {
           return (
-            <h2 key={i} className="mt-8 mb-3 text-lg font-semibold tracking-tight">
+            <h2
+              key={i}
+              id={`doc-block-${i}`}
+              className="mt-8 mb-3 text-lg font-semibold tracking-tight"
+            >
               {inner}
             </h2>
           );
         }
         if (block.type === "h3") {
           return (
-            <h3 key={i} className="mt-6 mb-2 font-semibold">
+            <h3 key={i} id={`doc-block-${i}`} className="mt-6 mb-2 font-semibold">
               {inner}
             </h3>
           );
         }
         if (block.type === "li") {
           return (
-            <p key={i} className="my-1 flex gap-2 pl-1">
+            <p key={i} id={`doc-block-${i}`} className="my-1 flex gap-2 pl-1">
               <span className="w-5 shrink-0 text-muted-foreground">
                 {block.ordered && block.n ? `${block.n}.` : "•"}
               </span>
@@ -251,7 +272,7 @@ export function DocumentPreview({
           );
         }
         return (
-          <p key={i} className="my-3">
+          <p key={i} id={`doc-block-${i}`} className="my-3">
             {inner}
           </p>
         );

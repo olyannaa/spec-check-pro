@@ -117,16 +117,129 @@ export function parseBlocks(text: string): Block[] {
   return blocks;
 }
 
+const MISSING_QUOTE =
+  /^(раздел отсутствует|раздел фильтрации отсутствует|раздел сериализации отсутствует|перечень справочников отсутствует|файловое хранение без пути|топики без кластера)/i;
+
+const WEAK_SECTIONS = new Set(["документ", "раздел", ""]);
+
+function fold(s: string): string {
+  return s
+    .toLowerCase()
+    .replace(/ё/g, "е")
+    .replace(/[«»„“”"']/g, "")
+    .replace(/[…]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function quotePieces(quote: string): string[] {
+  const raw = quote.replace(/\s+/g, " ").trim();
+  if (!raw || MISSING_QUOTE.test(raw)) return [];
+  const parts = raw
+    .split(/\s*(?:\/|↔|—)\s*/)
+    .map((p) => p.replace(/…$/u, "").trim())
+    .filter((p) => p.length >= 4);
+  return [raw.replace(/…$/u, "").trim(), ...parts].filter(Boolean);
+}
+
+function clipMatch(text: string, start: number, len: number): string {
+  return text.slice(start, Math.min(text.length, start + Math.min(len, 96)));
+}
+
+function indexIgnoreCase(text: string, needle: string): number {
+  if (!needle) return -1;
+  const exact = text.indexOf(needle);
+  if (exact >= 0) return exact;
+  return fold(text).indexOf(fold(needle)) >= 0
+    ? text.toLowerCase().replace(/ё/g, "е").indexOf(fold(needle))
+    : -1;
+}
+
 function matchIn(text: string, quote: string): string | null {
-  const q = quote.replace(/\s+/g, " ").trim();
-  if (!q || q === "раздел отсутствует") return null;
-  if (text.includes(q)) return q.length > 96 ? q.slice(0, 96) : q;
-  const short = q.slice(0, 28);
-  const idx = text.indexOf(short);
-  if (idx >= 0) {
-    return text.slice(idx, Math.min(text.length, idx + Math.min(q.length, 72)));
+  if (!text.trim()) return null;
+  const cell = text.trim();
+  const foldedCell = fold(cell);
+  if (
+    foldedCell.length >= 6 &&
+    !MISSING_QUOTE.test(quote) &&
+    fold(quote).includes(foldedCell)
+  ) {
+    return cell.length > 96 ? cell.slice(0, 96) : cell;
+  }
+  for (const piece of quotePieces(quote)) {
+    const exact = text.indexOf(piece);
+    if (exact >= 0) return clipMatch(text, exact, piece.length);
+    const foldedNeedle = fold(piece);
+    if (foldedNeedle.length < 4) continue;
+    const lower = text.toLowerCase().replace(/ё/g, "е");
+    const foldedIdx = lower.indexOf(foldedNeedle);
+    if (foldedIdx >= 0) return clipMatch(text, foldedIdx, piece.length);
+    const shortLen = Math.min(28, piece.length);
+    if (shortLen >= 8) {
+      const shortIdx = indexIgnoreCase(text, piece.slice(0, shortLen));
+      if (shortIdx >= 0) return clipMatch(text, shortIdx, piece.length);
+    }
   }
   return null;
+}
+
+function sectionPieces(section: string): string[] {
+  return section
+    .split(/\s*\/\s*/)
+    .map((s) => s.replace(/^\d+\.\s+/, "").replace(/:$/, "").trim())
+    .filter((s) => !WEAK_SECTIONS.has(fold(s)) && fold(s).length >= 4);
+}
+
+function headingOf(block: Block): string | null {
+  if (block.type === "h1" || block.type === "h2" || block.type === "h3") {
+    return block.text;
+  }
+  return null;
+}
+
+function sectionHitsHeading(heading: string, section: string): boolean {
+  const h = fold(heading);
+  return sectionPieces(section).some((piece) => {
+    const p = fold(piece);
+    return h === p || h.includes(p) || p.includes(h);
+  });
+}
+
+function collectQuoteAnchors(blocks: Block[], quote: string): Anchor[] {
+  const anchors: Anchor[] = [];
+  for (let bi = 0; bi < blocks.length; bi++) {
+    const block = blocks[bi];
+    if (!block) continue;
+    if (block.type === "table") {
+      block.head.forEach((cell, ci) => {
+        const m = matchIn(cell, quote);
+        if (m) anchors.push({ block: bi, row: -1, col: ci, match: m });
+      });
+      block.rows.forEach((row, ri) => {
+        row.forEach((cell, ci) => {
+          const m = matchIn(cell, quote);
+          if (m) anchors.push({ block: bi, row: ri, col: ci, match: m });
+        });
+      });
+      continue;
+    }
+    const m = matchIn(block.text, quote);
+    if (m) anchors.push({ block: bi, match: m });
+  }
+  return anchors;
+}
+
+function collectSectionAnchors(blocks: Block[], section: string): Anchor[] {
+  const anchors: Anchor[] = [];
+  for (let bi = 0; bi < blocks.length; bi++) {
+    const block = blocks[bi];
+    if (!block) continue;
+    const heading = headingOf(block);
+    if (heading && sectionHitsHeading(heading, section)) {
+      anchors.push({ block: bi, match: heading });
+    }
+  }
+  return anchors;
 }
 
 export function commentsFromFindings(
@@ -134,26 +247,11 @@ export function commentsFromFindings(
   findings: Finding[],
 ): DocComment[] {
   return findings.map((f, n) => {
-    const anchors: Anchor[] = [];
-    for (let bi = 0; bi < blocks.length; bi++) {
-      const block = blocks[bi];
-      if (!block) continue;
-      if (block.type === "table") {
-        block.head.forEach((cell, ci) => {
-          const m = matchIn(cell, f.quote);
-          if (m) anchors.push({ block: bi, row: -1, col: ci, match: m });
-        });
-        block.rows.forEach((row, ri) => {
-          row.forEach((cell, ci) => {
-            const m = matchIn(cell, f.quote);
-            if (m) anchors.push({ block: bi, row: ri, col: ci, match: m });
-          });
-        });
-      } else {
-        const m = matchIn(block.text, f.quote);
-        if (m) anchors.push({ block: bi, match: m });
-      }
-    }
+    const fromQuote = collectQuoteAnchors(blocks, f.quote);
+    const anchors = (fromQuote.length ? fromQuote : collectSectionAnchors(blocks, f.section)).slice(
+      0,
+      3,
+    );
     return {
       id: f.id,
       n: n + 1,
@@ -165,7 +263,11 @@ export function commentsFromFindings(
       ask: f.ask,
       ruleId: f.ruleId,
       role: f.role,
-      anchors: anchors.slice(0, 3),
+      anchors,
     };
   });
+}
+
+export function isLinkedComment(comment: DocComment): boolean {
+  return comment.anchors.length > 0;
 }

@@ -133,14 +133,22 @@ export default function SpecCheckApp() {
     }
   }
 
-  function select(id: string) {
+  function select(id: string, from: "comment" | "mark" = "comment") {
     setActiveId(id);
-    document
-      .getElementById(`comment-${id}`)
-      ?.scrollIntoView({ behavior: "smooth", block: "center" });
-    document
-      .getElementById(`mark-${id}`)
-      ?.scrollIntoView({ behavior: "smooth", block: "center" });
+    requestAnimationFrame(() => {
+      if (from === "comment") {
+        const comment = comments.find((c) => c.id === id);
+        const block = comment?.anchors[0]?.block;
+        const target =
+          document.getElementById(`mark-${id}`) ??
+          (block != null ? document.getElementById(`doc-block-${block}`) : null);
+        target?.scrollIntoView({ behavior: "smooth", block: "center" });
+        return;
+      }
+      document
+        .getElementById(`comment-${id}`)
+        ?.scrollIntoView({ behavior: "smooth", block: "center" });
+    });
   }
 
   function reset() {
@@ -433,7 +441,7 @@ export default function SpecCheckApp() {
                       comments={comments}
                       activeId={activeId}
                       rejectedIds={rejectedIds}
-                      onSelect={select}
+                      onSelect={(id) => select(id, "mark")}
                       editing={editing}
                       onEdit={(i, next) =>
                         setBlocks((prev) => prev.map((b, bi) => (bi === i ? next : b)))
@@ -448,7 +456,7 @@ export default function SpecCheckApp() {
                       comments={comments}
                       activeId={activeId}
                       statuses={statuses}
-                      onSelect={select}
+                      onSelect={(id) => select(id, "comment")}
                       onStatus={(id, status) =>
                         setStatuses((prev) => ({ ...prev, [id]: status }))
                       }
