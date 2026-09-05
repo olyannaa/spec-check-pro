@@ -54,6 +54,8 @@ export default function SpecCheckApp() {
   const [exporting, setExporting] = useState<"docx" | "pdf" | null>(null);
   const jumpFromComment = useRef(false);
   const [jumpNonce, setJumpNonce] = useState(0);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const analyzingRef = useRef(false);
 
   useEffect(() => {
     const saved = localStorage.getItem("speccheck-rules");
@@ -103,7 +105,9 @@ export default function SpecCheckApp() {
   async function analyze(preset?: { text: string; title: string }) {
     const incoming = preset?.text ?? text;
     const attached = preset ? null : file;
+    if (analyzingRef.current) return;
     if (!incoming.trim() && !attached) return;
+    analyzingRef.current = true;
     if (preset) {
       setText(preset.text);
       setFile(null);
@@ -141,6 +145,8 @@ export default function SpecCheckApp() {
     } catch {
       setError("Сеть или сервер не ответили.");
       setStage("input");
+    } finally {
+      analyzingRef.current = false;
     }
   }
 
@@ -290,27 +296,32 @@ export default function SpecCheckApp() {
 
               <div className="relative z-10 flex items-center justify-between gap-2 px-2 pb-1">
                 <div className="flex flex-wrap items-center gap-1">
-                  <label className="relative isolate inline-flex cursor-pointer items-center gap-2 overflow-hidden rounded-lg px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground">
-                    <Paperclip className="pointer-events-none size-4" />
-                    <span className="pointer-events-none">Прикрепить файл</span>
-                    <input
-                      type="file"
-                      accept=".pdf,.txt,.md,.doc,.docx,application/pdf"
-                      className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
-                      onChange={(e) => {
-                        const f = e.target.files?.[0];
-                        if (f) setFile(f);
-                        e.target.value = "";
-                      }}
-                    />
-                  </label>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".pdf,.txt,.md,.doc,.docx,application/pdf"
+                    className="sr-only"
+                    onChange={(e) => {
+                      const f = e.target.files?.[0];
+                      if (f) setFile(f);
+                      e.target.value = "";
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="inline-flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+                  >
+                    <Paperclip className="size-4" />
+                    Прикрепить файл
+                  </button>
                   <button
                     type="button"
                     onClick={() => {
                       setDraftRules(rules);
                       setRulesOpen((v) => !v);
                     }}
-                    className="relative z-10 inline-flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+                    className="inline-flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
                   >
                     <Shield className="size-4" />
                     Правила проверки
@@ -338,17 +349,15 @@ export default function SpecCheckApp() {
                   )}
                 </button>
               </div>
-            </div>
 
-            <div className="mt-5 flex flex-col items-center gap-3">
-              <div className="flex flex-wrap items-center justify-center gap-2">
+              <div className="relative z-20 mt-2 space-y-2 border-t border-border px-2 pt-2 pb-1">
                 {TEST_PRESETS.map((preset) => (
                   <button
                     key={preset.id}
                     type="button"
                     disabled={stage === "loading"}
                     onClick={() => void analyze({ text: preset.text, title: preset.title })}
-                    className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-border bg-card px-4 py-2.5 text-sm font-medium hover:border-foreground disabled:opacity-50"
+                    className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-border px-4 py-2.5 text-sm font-medium hover:border-foreground disabled:opacity-50"
                   >
                     {stage === "loading" ? (
                       <Loader2 className="size-4 animate-spin" />
@@ -358,11 +367,10 @@ export default function SpecCheckApp() {
                     {preset.label}
                   </button>
                 ))}
+                <p className="px-1 pb-1 text-center text-[12px] text-muted-foreground">
+                  Без файла: короткий прогон или полный набор из 8 правил и краевых случаев.
+                </p>
               </div>
-              <p className="max-w-md text-center text-[12px] text-muted-foreground">
-                Короткий шаблон — быстрый прогон. Полный набор — все 8 правил, таблицы,
-                противоречия и ошибки полей. Файл не нужен.
-              </p>
             </div>
           </section>
         </>
