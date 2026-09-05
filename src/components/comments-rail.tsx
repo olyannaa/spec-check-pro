@@ -32,72 +32,70 @@ function CommentCard({
   return (
     <div
       id={`comment-${c.id}`}
-      onMouseDown={(e) => {
-        if ((e.target as HTMLElement).closest("button")) return;
-        e.preventDefault();
-      }}
-      onClick={() => onSelect(c.id)}
       className={cn(
-        "block w-full cursor-pointer rounded-lg border bg-card p-4 text-left transition-all",
-        active ? cn("border-foreground shadow-sm", m.ring) : "border-border hover:border-foreground/40",
+        "relative rounded-lg border bg-card transition-all",
+        active ? cn("border-foreground shadow-sm", m.ring) : "border-border",
         rejected && "opacity-45",
       )}
     >
-      <div className="flex items-center gap-2">
-        <span className={cn("size-2 rounded-full", m.dot)} />
-        <span className="text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
-          {m.label}
-        </span>
-        <span className="rounded-sm border border-border px-1.5 py-px text-[10px] text-muted-foreground">
-          {ROLE_LABELS[c.role]}
-        </span>
-        {c.ruleId ? (
-          <span className="font-mono text-[10px] text-muted-foreground">
-            правило {c.ruleId}
+      <div
+        onClick={() => onSelect(c.id)}
+        className="w-full cursor-pointer rounded-lg p-4 pr-20 text-left hover:bg-secondary/40"
+      >
+        <div className="flex items-center gap-2">
+          <span className={cn("size-2 rounded-full", m.dot)} />
+          <span className="text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
+            {m.label}
           </span>
-        ) : null}
-        <span className="ml-auto flex items-center gap-1">
-          <button
-            type="button"
-            onMouseDown={(e) => e.stopPropagation()}
-            onClick={(e) => {
-              e.stopPropagation();
-              onStatus(c.id, status === "accepted" ? null : "accepted");
-            }}
-            aria-label="Принять"
-            title="Принять"
-            className={cn(
-              "inline-flex size-7 items-center justify-center rounded-md border transition-colors",
-              status === "accepted"
-                ? "border-foreground bg-foreground text-background"
-                : "border-border text-muted-foreground hover:border-foreground hover:text-foreground",
-            )}
-          >
-            <Check className="size-3.5" />
-          </button>
-          <button
-            type="button"
-            onMouseDown={(e) => e.stopPropagation()}
-            onClick={(e) => {
-              e.stopPropagation();
-              onStatus(c.id, rejected ? null : "rejected");
-            }}
-            aria-label="Отозвать"
-            title="Отозвать"
-            className={cn(
-              "inline-flex size-7 items-center justify-center rounded-md border transition-colors",
-              rejected
-                ? "border-destructive bg-destructive text-destructive-foreground"
-                : "border-border text-muted-foreground hover:border-foreground hover:text-foreground",
-            )}
-          >
-            <Undo2 className="size-3.5" />
-          </button>
-        </span>
+          <span className="rounded-sm border border-border px-1.5 py-px text-[10px] text-muted-foreground">
+            {ROLE_LABELS[c.role]}
+          </span>
+          {c.ruleId ? (
+            <span className="font-mono text-[10px] text-muted-foreground">
+              правило {c.ruleId}
+            </span>
+          ) : null}
+        </div>
+        <p className="mt-2 text-[12px] text-muted-foreground">{c.place}</p>
+        <p className="mt-1 text-[13px] leading-snug">{c.why}</p>
+        <p className="mt-2 text-[13px] leading-snug text-foreground/80">{c.ask}</p>
       </div>
-      <p className="mt-2 text-[12px] text-muted-foreground">{c.place}</p>
-      <p className="mt-1 text-[13px] leading-snug">{c.why}</p>
-      <p className="mt-2 text-[13px] leading-snug text-foreground/80">{c.ask}</p>
+      <div className="absolute top-3 right-3 z-30 flex items-center gap-1">
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onStatus(c.id, status === "accepted" ? null : "accepted");
+          }}
+          aria-label="Принять"
+          title="Принять"
+          className={cn(
+            "inline-flex size-7 items-center justify-center rounded-md border transition-colors",
+            status === "accepted"
+              ? "border-foreground bg-foreground text-background"
+              : "border-border text-muted-foreground hover:border-foreground hover:text-foreground",
+          )}
+        >
+          <Check className="size-3.5" />
+        </button>
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onStatus(c.id, rejected ? null : "rejected");
+          }}
+          aria-label="Отозвать"
+          title="Отозвать"
+          className={cn(
+            "inline-flex size-7 items-center justify-center rounded-md border transition-colors",
+            rejected
+              ? "border-destructive bg-destructive text-destructive-foreground"
+              : "border-border text-muted-foreground hover:border-foreground hover:text-foreground",
+          )}
+        >
+          <Undo2 className="size-3.5" />
+        </button>
+      </div>
     </div>
   );
 }

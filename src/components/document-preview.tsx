@@ -10,20 +10,8 @@ import {
   isLinkedComment,
   type Block,
   type DocComment,
-  type MarkLevel,
 } from "@/lib/doc-view";
 import { cn } from "@/lib/utils";
-
-const markClass: Record<MarkLevel, string> = {
-  3: "mark-3",
-  2: "mark-2",
-  1: "mark-1",
-};
-const markActiveClass: Record<MarkLevel, string> = {
-  3: "mark-3-active",
-  2: "mark-2-active",
-  1: "mark-1-active",
-};
 
 const PAGE_BODY_PX = 980;
 
@@ -70,8 +58,14 @@ function HighlightedText({
   const anchors = anchorsFor(comments, loc);
   if (anchors.length === 0) return <>{text}</>;
 
+  const ordered = [...anchors].sort((a, b) => {
+    if (a.comment.id === activeId) return -1;
+    if (b.comment.id === activeId) return 1;
+    return 0;
+  });
+
   const ranges: { start: number; end: number; comment: DocComment }[] = [];
-  for (const a of anchors) {
+  for (const a of ordered) {
     const start = text.indexOf(a.match);
     if (start === -1) continue;
     const end = start + a.match.length;
@@ -90,7 +84,6 @@ function HighlightedText({
       );
     }
     const active = activeId === r.comment.id;
-    const dimmed = activeId !== null && !active;
     const rejected = rejectedIds.has(r.comment.id);
     parts.push(
       <mark
@@ -100,12 +93,10 @@ function HighlightedText({
           e.stopPropagation();
           onSelect(r.comment.id);
         }}
+        data-level={r.comment.severity}
+        {...(active && !rejected ? { "data-active": "" } : {})}
         className={cn(
-          "cursor-pointer rounded-[3px] px-0.5 text-foreground transition-all",
-          markClass[r.comment.severity],
-          active && !rejected && markActiveClass[r.comment.severity],
-          active && !rejected && "ring-2 ring-foreground/60 ring-offset-1",
-          dimmed && "opacity-45",
+          "doc-hl text-foreground",
           rejected && "opacity-20 saturate-50",
         )}
         title={`Комментарий ${r.comment.n}`}
