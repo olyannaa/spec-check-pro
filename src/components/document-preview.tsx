@@ -1,4 +1,11 @@
-import { Fragment, type ReactNode } from "react";
+import {
+  Fragment,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import type { Block, DocComment, MarkLevel } from "@/lib/doc-view";
 import { cn } from "@/lib/utils";
 
@@ -12,6 +19,8 @@ const markActiveClass: Record<MarkLevel, string> = {
   2: "mark-2-active",
   1: "mark-1-active",
 };
+
+const PAGE_BODY_PX = 980;
 
 type Loc = { block: number; row?: number; col?: number };
 
@@ -107,6 +116,179 @@ function HighlightedText({
   return <>{parts}</>;
 }
 
+function BlockView({
+  block,
+  index,
+  comments,
+  activeId,
+  rejectedIds,
+  onSelect,
+  editing,
+  onEdit,
+}: {
+  block: Block;
+  index: number;
+  comments: DocComment[];
+  activeId: string | null;
+  rejectedIds: Set<string>;
+  onSelect: (id: string) => void;
+  editing: boolean;
+  onEdit: (index: number, next: Block) => void;
+}) {
+  if (block.type === "table") {
+    return (
+      <div
+        id={`doc-block-${index}`}
+        data-block={index}
+        className="my-5 overflow-x-auto"
+      >
+        <table className="w-full border-collapse text-[13px]">
+          <thead>
+            <tr>
+              {block.head.map((h, ci) => (
+                <th
+                  key={ci}
+                  className="border border-border bg-secondary px-3 py-2 text-left font-medium"
+                >
+                  {editing ? (
+                    <input
+                      value={h}
+                      onChange={(e) => {
+                        const head = [...block.head];
+                        head[ci] = e.target.value;
+                        onEdit(index, { ...block, head });
+                      }}
+                      className="w-full bg-transparent outline-none"
+                    />
+                  ) : (
+                    <HighlightedText
+                      text={h}
+                      comments={comments}
+                      loc={{ block: index, row: -1, col: ci }}
+                      activeId={activeId}
+                      onSelect={onSelect}
+                      rejectedIds={rejectedIds}
+                    />
+                  )}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {block.rows.map((row, ri) => (
+              <tr key={ri}>
+                {row.map((c, ci) => (
+                  <td
+                    key={ci}
+                    className="border border-border px-3 py-2 align-top"
+                  >
+                    {editing ? (
+                      <input
+                        value={c}
+                        onChange={(e) => {
+                          const rows = block.rows.map((r) => [...r]);
+                          rows[ri]![ci] = e.target.value;
+                          onEdit(index, { ...block, rows });
+                        }}
+                        className="w-full bg-transparent outline-none"
+                      />
+                    ) : (
+                      <HighlightedText
+                        text={c}
+                        comments={comments}
+                        loc={{ block: index, row: ri, col: ci }}
+                        activeId={activeId}
+                        onSelect={onSelect}
+                        rejectedIds={rejectedIds}
+                      />
+                    )}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
+  }
+
+  if (editing) {
+    return (
+      <textarea
+        data-block={index}
+        value={block.text}
+        rows={Math.max(1, Math.ceil(block.text.length / 78))}
+        onChange={(e) => onEdit(index, { ...block, text: e.target.value })}
+        className={cn(
+          "my-1 w-full resize-none rounded-md border border-border bg-secondary/40 px-3 py-2 outline-none focus:border-foreground",
+          block.type === "h1" && "text-2xl font-semibold",
+          block.type === "h2" && "text-lg font-semibold",
+          block.type === "h3" && "font-semibold",
+        )}
+      />
+    );
+  }
+
+  const inner = (
+    <HighlightedText
+      text={block.text}
+      comments={comments}
+      loc={{ block: index }}
+      activeId={activeId}
+      onSelect={onSelect}
+      rejectedIds={rejectedIds}
+    />
+  );
+  if (block.type === "h1") {
+    return (
+      <h1
+        id={`doc-block-${index}`}
+        data-block={index}
+        className="mt-2 mb-4 text-2xl font-semibold tracking-tight"
+      >
+        {inner}
+      </h1>
+    );
+  }
+  if (block.type === "h2") {
+    return (
+      <h2
+        id={`doc-block-${index}`}
+        data-block={index}
+        className="mt-8 mb-3 text-lg font-semibold tracking-tight"
+      >
+        {inner}
+      </h2>
+    );
+  }
+  if (block.type === "h3") {
+    return (
+      <h3
+        id={`doc-block-${index}`}
+        data-block={index}
+        className="mt-6 mb-2 font-semibold"
+      >
+        {inner}
+      </h3>
+    );
+  }
+  if (block.type === "li") {
+    return (
+      <p id={`doc-block-${index}`} data-block={index} className="my-1 flex gap-2 pl-1">
+        <span className="w-5 shrink-0 text-muted-foreground">
+          {block.ordered && block.n ? `${block.n}.` : "•"}
+        </span>
+        <span>{inner}</span>
+      </p>
+    );
+  }
+  return (
+    <p id={`doc-block-${index}`} data-block={index} className="my-3">
+      {inner}
+    </p>
+  );
+}
+
 export function DocumentPreview({
   title,
   blocks,
@@ -126,157 +308,94 @@ export function DocumentPreview({
   editing: boolean;
   onEdit: (index: number, next: Block) => void;
 }) {
+  const measureRef = useRef<HTMLDivElement>(null);
+  const [pageOf, setPageOf] = useState<number[]>([]);
+
+  useLayoutEffect(() => {
+    if (editing) {
+      setPageOf([]);
+      return;
+    }
+    const root = measureRef.current;
+    if (!root) return;
+    const nodes = [...root.querySelectorAll<HTMLElement>("[data-block]")];
+    if (!nodes.length) {
+      setPageOf([]);
+      return;
+    }
+    let acc = 0;
+    let page = 1;
+    const next = nodes.map((el) => {
+      const h = el.offsetHeight;
+      if (acc > 80 && acc + h > PAGE_BODY_PX) {
+        page += 1;
+        acc = 0;
+      }
+      acc += h;
+      return page;
+    });
+    setPageOf((prev) =>
+      prev.length === next.length && prev.every((n, i) => n === next[i])
+        ? prev
+        : next,
+    );
+  }, [blocks, editing, title]);
+
+  const pages = useMemo(() => {
+    if (editing || !pageOf.length) return null;
+    const groups: number[][] = [];
+    pageOf.forEach((page, i) => {
+      const idx = page - 1;
+      if (!groups[idx]) groups[idx] = [];
+      groups[idx]!.push(i);
+    });
+    return groups.filter((g) => g.length);
+  }, [editing, pageOf]);
+
+  const blockProps = {
+    comments,
+    activeId,
+    rejectedIds,
+    onSelect,
+    editing,
+    onEdit,
+  };
+
+  if (editing) {
+    return (
+      <article className="mx-auto max-w-[46rem] px-8 py-10 text-[15px] leading-relaxed">
+        <h1 className="mb-8 border-b border-border pb-4 text-2xl font-semibold tracking-tight">
+          {title}
+        </h1>
+        {blocks.map((block, i) => (
+          <BlockView key={i} block={block} index={i} {...blockProps} />
+        ))}
+      </article>
+    );
+  }
+
   return (
-    <article className="mx-auto max-w-[46rem] px-8 py-10 text-[15px] leading-relaxed">
-      <h1 className="mb-8 border-b border-border pb-4 text-2xl font-semibold tracking-tight">
-        {title}
-      </h1>
-      {blocks.map((block, i) => {
-        if (block.type === "table") {
-          return (
-            <div key={i} id={`doc-block-${i}`} className="my-5 overflow-x-auto">
-              <table className="w-full border-collapse text-[13px]">
-                <thead>
-                  <tr>
-                    {block.head.map((h, ci) => (
-                      <th
-                        key={ci}
-                        className="border border-border bg-secondary px-3 py-2 text-left font-medium"
-                      >
-                        {editing ? (
-                          <input
-                            value={h}
-                            onChange={(e) => {
-                              const head = [...block.head];
-                              head[ci] = e.target.value;
-                              onEdit(i, { ...block, head });
-                            }}
-                            className="w-full bg-transparent outline-none"
-                          />
-                        ) : (
-                          <HighlightedText
-                            text={h}
-                            comments={comments}
-                            loc={{ block: i, row: -1, col: ci }}
-                            activeId={activeId}
-                            onSelect={onSelect}
-                            rejectedIds={rejectedIds}
-                          />
-                        )}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {block.rows.map((row, ri) => (
-                    <tr key={ri}>
-                      {row.map((c, ci) => (
-                        <td
-                          key={ci}
-                          className="border border-border px-3 py-2 align-top"
-                        >
-                          {editing ? (
-                            <input
-                              value={c}
-                              onChange={(e) => {
-                                const rows = block.rows.map((r) => [...r]);
-                                rows[ri]![ci] = e.target.value;
-                                onEdit(i, { ...block, rows });
-                              }}
-                              className="w-full bg-transparent outline-none"
-                            />
-                          ) : (
-                            <HighlightedText
-                              text={c}
-                              comments={comments}
-                              loc={{ block: i, row: ri, col: ci }}
-                              activeId={activeId}
-                              onSelect={onSelect}
-                              rejectedIds={rejectedIds}
-                            />
-                          )}
-                        </td>
-                      ))}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          );
-        }
-
-        if (editing) {
-          return (
-            <textarea
-              key={i}
-              value={block.text}
-              rows={Math.max(1, Math.ceil(block.text.length / 78))}
-              onChange={(e) => onEdit(i, { ...block, text: e.target.value })}
-              className={cn(
-                "my-1 w-full resize-none rounded-md border border-border bg-secondary/40 px-3 py-2 outline-none focus:border-foreground",
-                block.type === "h1" && "text-2xl font-semibold",
-                block.type === "h2" && "text-lg font-semibold",
-                block.type === "h3" && "font-semibold",
-              )}
-            />
-          );
-        }
-
-        const inner = (
-          <HighlightedText
-            text={block.text}
-            comments={comments}
-            loc={{ block: i }}
-            activeId={activeId}
-            onSelect={onSelect}
-            rejectedIds={rejectedIds}
-          />
-        );
-        if (block.type === "h1") {
-          return (
-            <h1
-              key={i}
-              id={`doc-block-${i}`}
-              className="mt-2 mb-4 text-2xl font-semibold tracking-tight"
-            >
-              {inner}
+    <div ref={measureRef} className="bg-secondary/50 px-4 py-8">
+      {(pages ?? [blocks.map((_, i) => i)]).map((idxs, pageIdx, all) => (
+        <section
+          key={pageIdx}
+          className="doc-page relative mx-auto mb-6 max-w-[46rem] bg-card px-10 pt-10 pb-16 text-[15px] leading-relaxed shadow-sm ring-1 ring-border"
+        >
+          {pageIdx === 0 ? (
+            <h1 className="mb-8 border-b border-border pb-4 text-2xl font-semibold tracking-tight">
+              {title}
             </h1>
-          );
-        }
-        if (block.type === "h2") {
-          return (
-            <h2
-              key={i}
-              id={`doc-block-${i}`}
-              className="mt-8 mb-3 text-lg font-semibold tracking-tight"
-            >
-              {inner}
-            </h2>
-          );
-        }
-        if (block.type === "h3") {
-          return (
-            <h3 key={i} id={`doc-block-${i}`} className="mt-6 mb-2 font-semibold">
-              {inner}
-            </h3>
-          );
-        }
-        if (block.type === "li") {
-          return (
-            <p key={i} id={`doc-block-${i}`} className="my-1 flex gap-2 pl-1">
-              <span className="w-5 shrink-0 text-muted-foreground">
-                {block.ordered && block.n ? `${block.n}.` : "•"}
-              </span>
-              <span>{inner}</span>
-            </p>
-          );
-        }
-        return (
-          <p key={i} id={`doc-block-${i}`} className="my-3">
-            {inner}
+          ) : null}
+          {idxs.map((i) => {
+            const block = blocks[i];
+            if (!block) return null;
+            return <BlockView key={i} block={block} index={i} {...blockProps} />;
+          })}
+          <p className="absolute inset-x-0 bottom-5 text-center font-mono text-[11px] tracking-wide text-muted-foreground">
+            Страница {pageIdx + 1} из {all.length}
           </p>
-        );
-      })}
-    </article>
+        </section>
+      ))}
+    </div>
   );
 }

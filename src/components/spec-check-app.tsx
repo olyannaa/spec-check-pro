@@ -10,6 +10,7 @@ import {
   type DocComment,
 } from "@/lib/doc-view";
 import { buildExportReport, fileStem } from "@/lib/export-report";
+import { scrollDocumentTo } from "@/lib/scroll-doc";
 import { blankRule, DEFAULT_RULES, nextRuleId } from "@/lib/rules";
 import { ROLE_LABELS, type ReviewResult, type ReviewRole, type Rule } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -135,19 +136,10 @@ export default function SpecCheckApp() {
 
   function select(id: string, from: "comment" | "mark" = "comment") {
     setActiveId(id);
+    if (from !== "comment") return;
     requestAnimationFrame(() => {
-      if (from === "comment") {
-        const comment = comments.find((c) => c.id === id);
-        const block = comment?.anchors[0]?.block;
-        const target =
-          document.getElementById(`mark-${id}`) ??
-          (block != null ? document.getElementById(`doc-block-${block}`) : null);
-        target?.scrollIntoView({ behavior: "smooth", block: "center" });
-        return;
-      }
-      document
-        .getElementById(`comment-${id}`)
-        ?.scrollIntoView({ behavior: "smooth", block: "center" });
+      const comment = comments.find((c) => c.id === id);
+      scrollDocumentTo(id, comment?.anchors[0]?.block);
     });
   }
 
@@ -434,7 +426,7 @@ export default function SpecCheckApp() {
                 </div>
 
                 <div className="print-area flex min-h-0 flex-1 flex-col overflow-hidden lg:flex-row">
-                  <div className="min-w-0 flex-1 overflow-y-auto">
+                  <div id="doc-scroll" className="min-w-0 flex-1 overflow-y-auto">
                     <DocumentPreview
                       title={title}
                       blocks={blocks}
@@ -448,7 +440,7 @@ export default function SpecCheckApp() {
                       }
                     />
                   </div>
-                  <div className="no-print max-h-[42vh] shrink-0 overflow-y-auto border-t border-border bg-secondary/30 p-4 lg:max-h-none lg:w-[24rem] lg:border-l lg:border-t-0">
+                  <div className="no-print no-scroll-anchor max-h-[42vh] shrink-0 overflow-y-auto border-t border-border bg-secondary/30 p-4 lg:max-h-none lg:w-[24rem] lg:border-l lg:border-t-0">
                     <p className="mb-3 px-1 font-mono text-[11px] tracking-wide text-muted-foreground uppercase">
                       Комментарии
                     </p>
