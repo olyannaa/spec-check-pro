@@ -28,7 +28,7 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
 type Stage = "input" | "loading" | "result";
 
@@ -50,6 +50,8 @@ export default function SpecCheckApp() {
   const [llmCalls, setLlmCalls] = useState(0);
   const [rolesRan, setRolesRan] = useState<ReviewRole[]>([]);
   const [exporting, setExporting] = useState<"docx" | "pdf" | null>(null);
+  const jumpFromComment = useRef(false);
+  const [jumpNonce, setJumpNonce] = useState(0);
 
   useEffect(() => {
     const saved = localStorage.getItem("speccheck-rules");
@@ -137,11 +139,16 @@ export default function SpecCheckApp() {
   function select(id: string, from: "comment" | "mark" = "comment") {
     setActiveId(id);
     if (from !== "comment") return;
-    requestAnimationFrame(() => {
-      const comment = comments.find((c) => c.id === id);
-      scrollDocumentTo(id, comment?.anchors[0]?.block);
-    });
+    jumpFromComment.current = true;
+    setJumpNonce((n) => n + 1);
   }
+
+  useLayoutEffect(() => {
+    if (!activeId || !jumpFromComment.current) return;
+    jumpFromComment.current = false;
+    const comment = comments.find((c) => c.id === activeId);
+    scrollDocumentTo(activeId, comment?.anchors[0]?.block);
+  }, [activeId, jumpNonce, comments]);
 
   function reset() {
     setStage("input");
@@ -327,8 +334,8 @@ export default function SpecCheckApp() {
           </section>
         </>
       ) : (
-        <div className="flex min-h-screen">
-          <div className="hidden min-w-0 lg:block lg:max-w-[34rem] lg:flex-none lg:border-r lg:border-border">
+        <div className="flex h-dvh overflow-hidden">
+          <div className="hidden h-full min-w-0 overflow-y-auto lg:block lg:max-w-[34rem] lg:flex-none lg:border-r lg:border-border">
             <header className="flex h-14 items-center gap-2 border-b border-border px-6">
               <span className="size-2.5 rounded-full bg-destructive" />
               <span className="text-sm font-semibold tracking-tight">Ревью ТЗ</span>
@@ -345,10 +352,10 @@ export default function SpecCheckApp() {
             </section>
           </div>
 
-          <section className="flex min-h-screen min-w-0 flex-1 flex-col">
+          <section className="flex h-full min-w-0 flex-1 flex-col overflow-hidden">
             {stats ? (
               <>
-                <div className="no-print flex flex-wrap items-center gap-3 border-b border-border px-6 py-3">
+                <div className="no-print flex shrink-0 flex-wrap items-center gap-3 border-b border-border px-6 py-3">
                   <div className="mr-auto min-w-0">
                     <p className="truncate text-sm font-semibold">{title}</p>
                     <p className="mt-0.5 flex flex-wrap items-center gap-3 text-[12px] text-muted-foreground">
@@ -426,7 +433,7 @@ export default function SpecCheckApp() {
                 </div>
 
                 <div className="print-area flex min-h-0 flex-1 flex-col overflow-hidden lg:flex-row">
-                  <div id="doc-scroll" className="min-w-0 flex-1 overflow-y-auto">
+                  <div id="doc-scroll" className="min-h-0 min-w-0 flex-1 overflow-y-auto">
                     <DocumentPreview
                       title={title}
                       blocks={blocks}
@@ -442,7 +449,7 @@ export default function SpecCheckApp() {
                   </div>
                   <div
                     id="comments-scroll"
-                    className="no-print no-scroll-anchor relative z-20 max-h-[42vh] shrink-0 overflow-y-auto border-t border-border bg-secondary/30 p-4 lg:h-full lg:max-h-none lg:w-[24rem] lg:border-l lg:border-t-0"
+                    className="no-print no-scroll-anchor pointer-events-auto relative z-20 max-h-[42vh] min-h-0 shrink-0 overflow-y-auto border-t border-border bg-secondary/30 p-4 lg:h-full lg:max-h-none lg:w-[24rem] lg:border-l lg:border-t-0"
                   >
                     <p className="mb-3 px-1 font-mono text-[11px] tracking-wide text-muted-foreground uppercase">
                       Комментарии

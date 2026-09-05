@@ -8,6 +8,7 @@ import {
 } from "react";
 import {
   isLinkedComment,
+  locate,
   type Block,
   type DocComment,
 } from "@/lib/doc-view";
@@ -30,13 +31,40 @@ function anchorsFor(comments: DocComment[], loc: Loc) {
   return out;
 }
 
-function isPrimaryAnchor(comment: DocComment, loc: Loc): boolean {
-  const a = comment.anchors[0];
-  if (!a) return false;
+function BlockShell({
+  index,
+  comments,
+  activeId,
+  className,
+  as: Tag = "div",
+  children,
+}: {
+  index: number;
+  comments: DocComment[];
+  activeId: string | null;
+  className?: string;
+  as?: "div" | "h1" | "h2" | "h3" | "p";
+  children: ReactNode;
+}) {
+  const primaries = comments.filter((c) => c.anchors[0]?.block === index);
+  const active = primaries.find((c) => c.id === activeId);
   return (
-    a.block === loc.block &&
-    (a.row ?? null) === (loc.row ?? null) &&
-    (a.col ?? null) === (loc.col ?? null)
+    <Tag
+      id={`doc-block-${index}`}
+      data-block={index}
+      data-level={active?.severity}
+      className={cn("relative scroll-mt-8", active && "doc-block-active", className)}
+    >
+      {primaries.map((c) => (
+        <span
+          key={c.id}
+          id={`mark-${c.id}`}
+          className="absolute top-0 left-0 size-0"
+          aria-hidden
+        />
+      ))}
+      {children}
+    </Tag>
   );
 }
 
@@ -66,11 +94,28 @@ function HighlightedText({
 
   const ranges: { start: number; end: number; comment: DocComment }[] = [];
   for (const a of ordered) {
-    const start = text.indexOf(a.match);
-    if (start === -1) continue;
-    const end = start + a.match.length;
+    const found = locate(text, a.match);
+    if (!found) continue;
+    const { start, end } = found;
     if (ranges.some((r) => start < r.end && end > r.start)) continue;
     ranges.push({ start, end, comment: a.comment });
+  }
+  if (ranges.length === 0) {
+    const primary = comments.find(
+      (c) =>
+        c.anchors[0] &&
+        c.anchors[0].block === loc.block &&
+        (c.anchors[0].row ?? null) === (loc.row ?? null) &&
+        (c.anchors[0].col ?? null) === (loc.col ?? null) &&
+        c.id === activeId,
+    );
+    if (primary && text.length) {
+      ranges.push({
+        start: 0,
+        end: Math.min(text.length, 80),
+        comment: primary,
+      });
+    }
   }
   if (ranges.length === 0) return <>{text}</>;
   ranges.sort((x, y) => x.start - y.start);
@@ -88,7 +133,6 @@ function HighlightedText({
     parts.push(
       <mark
         key={`m${i}`}
-        id={isPrimaryAnchor(r.comment, loc) ? `mark-${r.comment.id}` : undefined}
         onClick={(e) => {
           e.stopPropagation();
           onSelect(r.comment.id);
@@ -131,13 +175,11 @@ function BlockView({
   editing: boolean;
   onEdit: (index: number, next: Block) => void;
 }) {
+  const shell = { index, comments, activeId };
+
   if (block.type === "table") {
     return (
-      <div
-        id={`doc-block-${index}`}
-        data-block={index}
-        className="my-5 overflow-x-auto"
-      >
+      <BlockShell {...shell} className="my-5 overflow-x-auto">
         <table className="w-full border-collapse text-[13px]">
           <thead>
             <tr>
@@ -204,7 +246,7 @@ function BlockView({
             ))}
           </tbody>
         </table>
-      </div>
+      </BlockShell>
     );
   }
 
@@ -237,51 +279,39 @@ function BlockView({
   );
   if (block.type === "h1") {
     return (
-      <h1
-        id={`doc-block-${index}`}
-        data-block={index}
-        className="mt-2 mb-4 text-2xl font-semibold tracking-tight"
-      >
+      <BlockShell {...shell} as="h1" className="mt-2 mb-4 text-2xl font-semibold tracking-tight">
         {inner}
-      </h1>
+      </BlockShell>
     );
   }
   if (block.type === "h2") {
     return (
-      <h2
-        id={`doc-block-${index}`}
-        data-block={index}
-        className="mt-8 mb-3 text-lg font-semibold tracking-tight"
-      >
+      <BlockShell {...shell} as="h2" className="mt-8 mb-3 text-lg font-semibold tracking-tight">
         {inner}
-      </h2>
+      </BlockShell>
     );
   }
   if (block.type === "h3") {
     return (
-      <h3
-        id={`doc-block-${index}`}
-        data-block={index}
-        className="mt-6 mb-2 font-semibold"
-      >
+      <BlockShell {...shell} as="h3" className="mt-6 mb-2 font-semibold">
         {inner}
-      </h3>
+      </BlockShell>
     );
   }
   if (block.type === "li") {
     return (
-      <p id={`doc-block-${index}`} data-block={index} className="my-1 flex gap-2 pl-1">
+      <BlockShell {...shell} as="p" className="my-1 flex gap-2 pl-1">
         <span className="w-5 shrink-0 text-muted-foreground">
           {block.ordered && block.n ? `${block.n}.` : "•"}
         </span>
         <span>{inner}</span>
-      </p>
+      </BlockShell>
     );
   }
   return (
-    <p id={`doc-block-${index}`} data-block={index} className="my-3">
+    <BlockShell {...shell} as="p" className="my-3">
       {inner}
-    </p>
+    </BlockShell>
   );
 }
 

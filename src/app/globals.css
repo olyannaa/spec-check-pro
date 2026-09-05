@@ -92,6 +92,20 @@ mark.doc-hl[data-active][data-level="2"] {
   box-shadow: inset 0 -2px 0 0 var(--warn);
 }
 
+.doc-block-active {
+  border-radius: 6px;
+  background: color-mix(in oklab, var(--note-soft) 22%, transparent);
+  box-shadow: inset 3px 0 0 var(--note);
+}
+.doc-block-active[data-level="3"] {
+  background: color-mix(in oklab, var(--crit-soft) 22%, transparent);
+  box-shadow: inset 3px 0 0 var(--crit);
+}
+.doc-block-active[data-level="2"] {
+  background: color-mix(in oklab, var(--warn-soft) 22%, transparent);
+  box-shadow: inset 3px 0 0 var(--warn);
+}
+
 .no-scroll-anchor {
   overflow-anchor: none;
 }
