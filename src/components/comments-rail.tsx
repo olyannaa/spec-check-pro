@@ -1,4 +1,4 @@
-import { Check, Link2, Link2Off, Undo2 } from "lucide-react";
+import { Check, Link2, Undo2 } from "lucide-react";
 import {
   isLinkedComment,
   type CommentStatus,
@@ -44,8 +44,7 @@ function CommentCard({
         }
       }}
       className={cn(
-        "block w-full rounded-lg border bg-card p-4 text-left transition-all",
-        linkable ? "cursor-pointer" : "cursor-default",
+        "block w-full cursor-pointer rounded-lg border bg-card p-4 text-left transition-all",
         active ? cn("border-foreground shadow-sm", m.ring) : "border-border hover:border-foreground/40",
         rejected && "opacity-45",
       )}
@@ -103,17 +102,10 @@ function CommentCard({
       <p className="mt-2 text-[12px] text-muted-foreground">{c.place}</p>
       <p className="mt-1 text-[13px] leading-snug">{c.why}</p>
       <p className="mt-2 text-[13px] leading-snug text-foreground/80">{c.ask}</p>
-      {linkable ? (
-        <p className="mt-3 inline-flex items-center gap-1 text-[12px] text-foreground">
-          <Link2 className="size-3.5" />
-          Перейти к месту в ТЗ
-        </p>
-      ) : (
-        <p className="mt-3 inline-flex items-center gap-1 text-[12px] text-muted-foreground">
-          <Link2Off className="size-3.5" />
-          Общий комментарий — в тексте ТЗ нет конкретного фрагмента
-        </p>
-      )}
+      <p className="mt-3 inline-flex items-center gap-1 text-[12px] text-foreground underline-offset-2 hover:underline">
+        <Link2 className="size-3.5" />
+        {linkable ? "Перейти к месту в ТЗ" : "Перейти к общему замечанию"}
+      </p>
     </div>
   );
 }

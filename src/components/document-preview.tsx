@@ -6,7 +6,12 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import type { Block, DocComment, MarkLevel } from "@/lib/doc-view";
+import {
+  isLinkedComment,
+  type Block,
+  type DocComment,
+  type MarkLevel,
+} from "@/lib/doc-view";
 import { cn } from "@/lib/utils";
 
 const markClass: Record<MarkLevel, string> = {
@@ -379,10 +384,13 @@ export function DocumentPreview({
       {(pages ?? [blocks.map((_, i) => i)]).map((idxs, pageIdx, all) => (
         <section
           key={pageIdx}
-          className="doc-page relative mx-auto mb-6 max-w-[46rem] bg-card px-10 pt-10 pb-16 text-[15px] leading-relaxed shadow-sm ring-1 ring-border"
+          className="doc-page mx-auto mb-6 flex max-w-[46rem] flex-col bg-card px-10 pt-10 pb-8 text-[15px] leading-relaxed shadow-sm ring-1 ring-border"
         >
           {pageIdx === 0 ? (
-            <h1 className="mb-8 border-b border-border pb-4 text-2xl font-semibold tracking-tight">
+            <h1
+              id="doc-title"
+              className="mb-8 border-b border-border pb-4 text-2xl font-semibold tracking-tight"
+            >
               {title}
             </h1>
           ) : null}
@@ -391,11 +399,46 @@ export function DocumentPreview({
             if (!block) return null;
             return <BlockView key={i} block={block} index={i} {...blockProps} />;
           })}
-          <p className="absolute inset-x-0 bottom-5 text-center font-mono text-[11px] tracking-wide text-muted-foreground">
+          {pageIdx === all.length - 1 ? (
+            <MissingAnchors comments={comments} onSelect={onSelect} />
+          ) : null}
+          <p className="mt-auto pt-10 text-center font-mono text-[11px] tracking-wide text-muted-foreground">
             Страница {pageIdx + 1} из {all.length}
           </p>
         </section>
       ))}
+    </div>
+  );
+}
+
+function MissingAnchors({
+  comments,
+  onSelect,
+}: {
+  comments: DocComment[];
+  onSelect: (id: string) => void;
+}) {
+  const loose = comments.filter((c) => !isLinkedComment(c));
+  if (!loose.length) return null;
+  return (
+    <div className="mt-10 border-t border-border pt-6">
+      <p className="mb-3 font-mono text-[11px] tracking-wide text-muted-foreground uppercase">
+        Общие замечания
+      </p>
+      <div className="space-y-2">
+        {loose.map((c) => (
+          <button
+            key={c.id}
+            type="button"
+            id={`mark-${c.id}`}
+            onClick={() => onSelect(c.id)}
+            className="block w-full cursor-pointer rounded-md border border-dashed border-border px-3 py-2 text-left text-[13px] hover:border-foreground"
+          >
+            <span className="font-medium">{c.place}</span>
+            <span className="mt-0.5 block text-muted-foreground">{c.ask}</span>
+          </button>
+        ))}
+      </div>
     </div>
   );
 }

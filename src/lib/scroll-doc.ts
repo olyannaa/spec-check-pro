@@ -5,7 +5,8 @@ export function scrollDocumentTo(id: string, fallbackBlock?: number) {
     document.getElementById(`mark-${id}`) ??
     (fallbackBlock != null
       ? document.getElementById(`doc-block-${fallbackBlock}`)
-      : null);
+      : null) ??
+    document.getElementById("doc-title");
   if (!target) return;
 
   if (!pane) {
