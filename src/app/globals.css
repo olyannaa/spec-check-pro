@@ -92,18 +92,51 @@ mark.doc-hl[data-active][data-level="2"] {
   box-shadow: inset 0 -2px 0 0 var(--warn);
 }
 
-.doc-block-active {
+.doc-block-active,
+.doc-table-active {
   border-radius: 6px;
   background: color-mix(in oklab, var(--note-soft) 22%, transparent);
   box-shadow: inset 3px 0 0 var(--note);
 }
-.doc-block-active[data-level="3"] {
+.doc-block-active[data-level="3"],
+.doc-table-active[data-level="3"] {
   background: color-mix(in oklab, var(--crit-soft) 22%, transparent);
   box-shadow: inset 3px 0 0 var(--crit);
 }
-.doc-block-active[data-level="2"] {
+.doc-block-active[data-level="2"],
+.doc-table-active[data-level="2"] {
   background: color-mix(in oklab, var(--warn-soft) 22%, transparent);
   box-shadow: inset 3px 0 0 var(--warn);
+}
+
+.doc-table-active {
+  padding: 2px 4px;
+  box-shadow: 0 0 0 2px color-mix(in oklab, var(--note) 70%, transparent);
+}
+.doc-table-active[data-level="3"] {
+  box-shadow: 0 0 0 2px color-mix(in oklab, var(--crit) 70%, transparent);
+}
+.doc-table-active[data-level="2"] {
+  box-shadow: 0 0 0 2px color-mix(in oklab, var(--warn) 70%, transparent);
+}
+
+.doc-cell-active,
+.doc-row-active td,
+.doc-row-active th {
+  background: color-mix(in oklab, var(--note-soft) 70%, white) !important;
+  box-shadow: inset 0 0 0 2px var(--note);
+}
+.doc-cell-active[data-level="3"],
+.doc-row-active[data-level="3"] td,
+.doc-row-active[data-level="3"] th {
+  background: color-mix(in oklab, var(--crit-soft) 70%, white) !important;
+  box-shadow: inset 0 0 0 2px var(--crit);
+}
+.doc-cell-active[data-level="2"],
+.doc-row-active[data-level="2"] td,
+.doc-row-active[data-level="2"] th {
+  background: color-mix(in oklab, var(--warn-soft) 70%, white) !important;
+  box-shadow: inset 0 0 0 2px var(--warn);
 }
 
 .no-scroll-anchor {

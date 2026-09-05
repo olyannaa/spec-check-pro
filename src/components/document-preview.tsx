@@ -22,6 +22,7 @@ function anchorsFor(comments: DocComment[], loc: Loc) {
   const out: { match: string; comment: DocComment }[] = [];
   for (const c of comments) {
     for (const a of c.anchors) {
+      if (a.cover !== "span") continue;
       if (a.block !== loc.block) continue;
       if ((a.row ?? null) !== (loc.row ?? null)) continue;
       if ((a.col ?? null) !== (loc.col ?? null)) continue;
@@ -29,6 +30,23 @@ function anchorsFor(comments: DocComment[], loc: Loc) {
     }
   }
   return out;
+}
+
+function tableFocus(comments: DocComment[], block: number, activeId: string | null) {
+  const comment = comments.find((c) => c.id === activeId);
+  if (!comment) return { table: false, rows: new Set<number>(), cells: new Set<string>(), level: 1 as const };
+  const here = comment.anchors.filter((a) => a.block === block);
+  const table = here.some((a) => a.cover === "block");
+  return {
+    table,
+    rows: new Set(table ? [] : here.filter((a) => a.cover === "row").map((a) => a.row ?? 0)),
+    cells: new Set(
+      table
+        ? []
+        : here.filter((a) => a.cover === "cell").map((a) => `${a.row}:${a.col}`),
+    ),
+    level: comment.severity,
+  };
 }
 
 function BlockShell({
@@ -46,14 +64,16 @@ function BlockShell({
   as?: "div" | "h1" | "h2" | "h3" | "p";
   children: ReactNode;
 }) {
-  const primaries = comments.filter((c) => c.anchors[0]?.block === index);
-  const active = primaries.find((c) => c.id === activeId);
+  const primaries = comments.filter((c) => c.anchors.some((a) => a.block === index));
+  const active = comments.find(
+    (c) => c.id === activeId && c.anchors.some((a) => a.block === index && a.cover === "block"),
+  );
   return (
     <Tag
       id={`doc-block-${index}`}
       data-block={index}
       data-level={active?.severity}
-      className={cn("relative scroll-mt-8", active && "doc-block-active", className)}
+      className={cn("relative scroll-mt-8", active && "doc-table-active", className)}
     >
       {primaries.map((c) => (
         <span
@@ -104,6 +124,7 @@ function HighlightedText({
     const primary = comments.find(
       (c) =>
         c.anchors[0] &&
+        c.anchors[0].cover === "span" &&
         c.anchors[0].block === loc.block &&
         (c.anchors[0].row ?? null) === (loc.row ?? null) &&
         (c.anchors[0].col ?? null) === (loc.col ?? null) &&
@@ -178,6 +199,7 @@ function BlockView({
   const shell = { index, comments, activeId };
 
   if (block.type === "table") {
+    const focus = tableFocus(comments, index, activeId);
     return (
       <BlockShell {...shell} className="my-5 overflow-x-auto">
         <table className="w-full border-collapse text-[13px]">
@@ -186,7 +208,11 @@ function BlockView({
               {block.head.map((h, ci) => (
                 <th
                   key={ci}
-                  className="border border-border bg-secondary px-3 py-2 text-left font-medium"
+                  data-level={focus.cells.has(`-1:${ci}`) ? focus.level : undefined}
+                  className={cn(
+                    "border border-border bg-secondary px-3 py-2 text-left font-medium",
+                    focus.cells.has(`-1:${ci}`) && "doc-cell-active",
+                  )}
                 >
                   {editing ? (
                     <input
@@ -199,14 +225,7 @@ function BlockView({
                       className="w-full bg-transparent outline-none"
                     />
                   ) : (
-                    <HighlightedText
-                      text={h}
-                      comments={comments}
-                      loc={{ block: index, row: -1, col: ci }}
-                      activeId={activeId}
-                      onSelect={onSelect}
-                      rejectedIds={rejectedIds}
-                    />
+                    h
                   )}
                 </th>
               ))}
@@ -214,11 +233,19 @@ function BlockView({
           </thead>
           <tbody>
             {block.rows.map((row, ri) => (
-              <tr key={ri}>
+              <tr
+                key={ri}
+                data-level={focus.rows.has(ri) ? focus.level : undefined}
+                className={cn(focus.rows.has(ri) && "doc-row-active")}
+              >
                 {row.map((c, ci) => (
                   <td
                     key={ci}
-                    className="border border-border px-3 py-2 align-top"
+                    data-level={focus.cells.has(`${ri}:${ci}`) ? focus.level : undefined}
+                    className={cn(
+                      "border border-border px-3 py-2 align-top",
+                      focus.cells.has(`${ri}:${ci}`) && "doc-cell-active",
+                    )}
                   >
                     {editing ? (
                       <input
@@ -231,14 +258,7 @@ function BlockView({
                         className="w-full bg-transparent outline-none"
                       />
                     ) : (
-                      <HighlightedText
-                        text={c}
-                        comments={comments}
-                        loc={{ block: index, row: ri, col: ci }}
-                        activeId={activeId}
-                        onSelect={onSelect}
-                        rejectedIds={rejectedIds}
-                      />
+                      c
                     )}
                   </td>
                 ))}

@@ -9,11 +9,14 @@ export type Block =
   | { type: "li"; text: string; ordered?: boolean; n?: number }
   | { type: "table"; head: string[]; rows: string[][] };
 
+export type AnchorCover = "block" | "row" | "cell" | "span";
+
 export type Anchor = {
   block: number;
   row?: number;
   col?: number;
   match: string;
+  cover: AnchorCover;
 };
 
 export type DocComment = {
@@ -210,28 +213,86 @@ function sectionHitsHeading(heading: string, section: string): boolean {
   });
 }
 
+function isDistinctiveCell(text: string): boolean {
+  const t = text.trim();
+  if (!t) return false;
+  if (/[A-Za-z0-9]+[_.-][A-Za-z0-9_.-]{2,}/.test(t)) return true;
+  if (t.length >= 16) return true;
+  return false;
+}
+
+function tableCells(block: Extract<Block, { type: "table" }>) {
+  const cells: { row: number; col: number; text: string }[] = [];
+  block.head.forEach((text, col) => cells.push({ row: -1, col, text }));
+  block.rows.forEach((row, ri) => {
+    row.forEach((text, col) => cells.push({ row: ri, col, text }));
+  });
+  return cells;
+}
+
+function quoteNamesCell(quote: string, cell: string): boolean {
+  const t = cell.trim();
+  if (!isDistinctiveCell(t)) return false;
+  if (locate(quote, t)) return true;
+  const id = t.match(/[A-Za-z][A-Za-z0-9]*[_.-][A-Za-z0-9_.-]+/);
+  return !!(id && locate(quote, id[0]));
+}
+
+function quoteIsTableDump(quote: string): boolean {
+  return /\|/.test(quote) || /поле\s+тип/i.test(quote) || /тип данных/i.test(quote);
+}
+
+function collectTableAnchors(
+  block: Extract<Block, { type: "table" }>,
+  bi: number,
+  quote: string,
+): Anchor[] {
+  if (!quote.trim() || MISSING_QUOTE.test(quote)) return [];
+  const cells = tableCells(block);
+  const named = cells.filter((c) => quoteNamesCell(quote, c.text));
+  const rowsHit = new Set(named.map((c) => c.row));
+
+  if (
+    named.length >= 1 &&
+    named.length <= 4 &&
+    rowsHit.size <= 2 &&
+    !quoteIsTableDump(quote)
+  ) {
+    if (named.length >= 2 && rowsHit.size === 1) {
+      return [{ block: bi, row: named[0]!.row, match: "", cover: "row" }];
+    }
+    return named.map((c) => ({
+      block: bi,
+      row: c.row,
+      col: c.col,
+      match: c.text,
+      cover: "cell" as const,
+    }));
+  }
+
+  const headerHits = block.head.filter(
+    (h) => h.trim().length >= 4 && locate(quote, h.trim()),
+  ).length;
+  const involved = named.length > 0 || (quoteIsTableDump(quote) && headerHits >= 2);
+  if (involved) return [{ block: bi, match: "", cover: "block" }];
+  return [];
+}
+
 function collectQuoteAnchors(blocks: Block[], quote: string): Anchor[] {
-  const anchors: Anchor[] = [];
+  const textAnchors: Anchor[] = [];
+  const tableAnchors: Anchor[] = [];
   for (let bi = 0; bi < blocks.length; bi++) {
     const block = blocks[bi];
     if (!block) continue;
     if (block.type === "table") {
-      block.head.forEach((cell, ci) => {
-        const m = matchIn(cell, quote);
-        if (m) anchors.push({ block: bi, row: -1, col: ci, match: m });
-      });
-      block.rows.forEach((row, ri) => {
-        row.forEach((cell, ci) => {
-          const m = matchIn(cell, quote);
-          if (m) anchors.push({ block: bi, row: ri, col: ci, match: m });
-        });
-      });
+      tableAnchors.push(...collectTableAnchors(block, bi, quote));
       continue;
     }
     const m = matchIn(block.text, quote);
-    if (m) anchors.push({ block: bi, match: m });
+    if (m) textAnchors.push({ block: bi, match: m, cover: "span" });
   }
-  return anchors;
+  if (textAnchors.length) return textAnchors;
+  return tableAnchors;
 }
 
 function collectSectionAnchors(blocks: Block[], section: string): Anchor[] {
@@ -241,7 +302,7 @@ function collectSectionAnchors(blocks: Block[], section: string): Anchor[] {
     if (!block) continue;
     const heading = headingOf(block);
     if (heading && sectionHitsHeading(heading, section)) {
-      anchors.push({ block: bi, match: heading });
+      anchors.push({ block: bi, match: heading, cover: "span" });
     }
   }
   return anchors;
@@ -260,8 +321,14 @@ function cellText(block: Block, anchor: Pick<Anchor, "row" | "col">): string | n
 
 function sliceMatch(text: string, hint: string): string {
   const found = locate(text, hint);
-  if (found) return text.slice(found.start, found.end);
-  return text.slice(0, Math.min(48, text.length));
+  if (!found) return text.slice(0, Math.min(48, text.length));
+  let { start, end } = found;
+  while (start > 0 && /[\p{L}\p{N}_-]/u.test(text[start - 1] ?? "")) start -= 1;
+  while (end < text.length && /[\p{L}\p{N}_-]/u.test(text[end] ?? "")) end += 1;
+  if (end - start < 8) {
+    return text.slice(0, Math.min(80, text.length));
+  }
+  return text.slice(start, Math.min(end, start + 96));
 }
 
 function hintsFor(finding: { section: string; ruleId?: string; quote: string }): string[] {
@@ -281,51 +348,48 @@ function fallbackAnchor(
     if (!heading) continue;
     const h = fold(heading);
     if (hints.some((hint) => h.includes(fold(hint)) || fold(hint).includes(h))) {
-      return { block: bi, match: heading };
+      return { block: bi, match: heading, cover: "span" };
     }
   }
   for (let bi = 0; bi < blocks.length; bi++) {
     const block = blocks[bi];
     if (!block) continue;
     if (block.type === "table") {
-      for (let ci = 0; ci < block.head.length; ci++) {
-        const cell = block.head[ci] ?? "";
-        const hit = hints.find((hint) => locate(cell, hint));
-        if (hit) return { block: bi, row: -1, col: ci, match: sliceMatch(cell, hit) };
-      }
-      for (let ri = 0; ri < block.rows.length; ri++) {
-        const row = block.rows[ri] ?? [];
-        for (let ci = 0; ci < row.length; ci++) {
-          const cell = row[ci] ?? "";
-          if (!cell) continue;
-          const hit = hints.find((hint) => locate(cell, hint));
-          if (hit) return { block: bi, row: ri, col: ci, match: sliceMatch(cell, hit) };
-        }
+      const blob = [
+        ...block.head,
+        ...block.rows.flat(),
+      ].join(" ");
+      if (hints.some((hint) => locate(blob, hint))) {
+        return { block: bi, match: "", cover: "block" };
       }
       continue;
     }
     const hit = hints.find((hint) => locate(block.text, hint));
-    if (hit) return { block: bi, match: sliceMatch(block.text, hit) };
+    if (hit) return { block: bi, match: sliceMatch(block.text, hit), cover: "span" };
   }
   for (let bi = 0; bi < blocks.length; bi++) {
     const heading = headingOf(blocks[bi]!);
-    if (heading) return { block: bi, match: heading };
+    if (heading) return { block: bi, match: heading, cover: "span" };
   }
   const first = blocks[0];
   if (!first) return null;
   if (first.type === "table") {
-    const cell = first.head[0] ?? first.rows[0]?.[0] ?? "";
-    if (cell) return { block: 0, row: first.head[0] ? -1 : 0, col: 0, match: cell };
-    return null;
+    return { block: 0, match: "", cover: "block" };
   }
-  return { block: 0, match: first.text.slice(0, Math.min(48, first.text.length)) };
+  return {
+    block: 0,
+    match: first.text.slice(0, Math.min(48, first.text.length)),
+    cover: "span",
+  };
 }
 
 function pinAnchor(blocks: Block[], anchor: Anchor): Anchor | null {
   const block = blocks[anchor.block];
   if (!block) return null;
+  if (anchor.cover === "block" || anchor.cover === "row") return anchor;
   const text = cellText(block, anchor);
   if (!text) return null;
+  if (anchor.cover === "cell") return { ...anchor, match: text };
   return { ...anchor, match: sliceMatch(text, anchor.match) };
 }
 
