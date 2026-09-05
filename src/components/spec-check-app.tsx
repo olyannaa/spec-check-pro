@@ -12,10 +12,12 @@ import {
 import { buildExportReport, fileStem } from "@/lib/export-report";
 import { scrollDocumentTo } from "@/lib/scroll-doc";
 import { blankRule, DEFAULT_RULES, nextRuleId } from "@/lib/rules";
+import { TEST_TEMPLATE, TEST_TEMPLATE_TITLE } from "@/lib/test-template";
 import { ROLE_LABELS, type ReviewResult, type ReviewRole, type Rule } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import {
   ArrowUp,
+  Beaker,
   Download,
   FileText,
   Loader2,
@@ -98,15 +100,21 @@ export default function SpecCheckApp() {
         }`
       : null;
 
-  async function analyze() {
-    if (!text.trim() && !file) return;
+  async function analyze(preset?: { text: string; title: string }) {
+    const incoming = preset?.text ?? text;
+    const attached = preset ? null : file;
+    if (!incoming.trim() && !attached) return;
+    if (preset) {
+      setText(preset.text);
+      setFile(null);
+    }
     setStage("loading");
     setError(null);
     try {
       const form = new FormData();
       form.set("rules", JSON.stringify(rules));
-      if (text.trim()) form.set("text", text);
-      if (file) form.set("file", file);
+      if (incoming.trim()) form.set("text", incoming);
+      if (attached) form.set("file", attached);
       const res = await fetch("/api/review", { method: "POST", body: form });
       const data = (await res.json()) as ReviewResult & {
         error?: string;
@@ -118,14 +126,14 @@ export default function SpecCheckApp() {
         setStage("input");
         return;
       }
-      const body = data.text?.trim() || text.trim();
+      const body = data.text?.trim() || incoming.trim();
       const parsed = parseBlocks(body);
       setBlocks(parsed);
       setComments(commentsFromFindings(parsed, data.findings));
       setSummary(data.summary);
       setLlmCalls(data.llmCalls ?? 0);
       setRolesRan(data.rolesRan ?? []);
-      setTitle(file?.name ?? "Техническое задание");
+      setTitle(preset?.title ?? attached?.name ?? "Техническое задание");
       setActiveId(null);
       setStatuses({});
       setEditing(false);
@@ -330,6 +338,27 @@ export default function SpecCheckApp() {
                   )}
                 </button>
               </div>
+            </div>
+
+            <div className="mt-5 flex flex-col items-center gap-2">
+              <button
+                type="button"
+                disabled={stage === "loading"}
+                onClick={() =>
+                  void analyze({ text: TEST_TEMPLATE, title: TEST_TEMPLATE_TITLE })
+                }
+                className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-border bg-card px-4 py-2.5 text-sm font-medium hover:border-foreground disabled:opacity-50"
+              >
+                {stage === "loading" ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <Beaker className="size-4" />
+                )}
+                Проверить тестовый шаблон
+              </button>
+              <p className="text-center text-[12px] text-muted-foreground">
+                Вшитое демо-ТЗ витрины — без файла и без вставки текста.
+              </p>
             </div>
           </section>
         </>
