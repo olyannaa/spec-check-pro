@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
-import { pdfBufferToMarkdown } from "../src/lib/pdf-layout.ts";
-import { parseBlocks } from "../src/lib/doc-view.ts";
-import { formatSpecText } from "../src/lib/format-doc.ts";
+import { pdfBufferToMarkdown } from "../src/lib/pdf-layout";
+import { parseBlocks } from "../src/lib/doc-view";
+import { formatSpecText } from "../src/lib/format-doc";
 
 function fail(msg: string): never {
   console.error("FAIL", msg);

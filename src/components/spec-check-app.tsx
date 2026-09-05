@@ -236,7 +236,7 @@ export default function SpecCheckApp() {
           <header className="flex h-14 items-center justify-between border-b border-border bg-background px-6">
             <div className="flex items-center gap-2">
               <span className="size-2.5 rounded-full bg-destructive" />
-              <span className="text-sm font-semibold tracking-tight">Ревью ТЗ</span>
+              <span className="text-sm font-semibold tracking-tight">SPEC CHECK PRO</span>
             </div>
             <span className="font-mono text-[11px] tracking-wide text-muted-foreground uppercase">
               Анализ технических заданий
@@ -249,8 +249,6 @@ export default function SpecCheckApp() {
             </h1>
             <p className="mt-4 text-center text-[15px] text-muted-foreground text-balance">
               Прикрепите документ (Word или PDF) либо вставьте текст технического задания.
-              Одна модель смотрит ТЗ тремя ролями: шаблон, разработчик и QA.
-              Замечания — HIGH, MEDIUM и LOW. Текст сам не переписываю.
             </p>
 
             {error ? (
@@ -379,7 +377,7 @@ export default function SpecCheckApp() {
           <div className="hidden h-full min-w-0 overflow-y-auto lg:block lg:max-w-[34rem] lg:flex-none lg:border-r lg:border-border">
             <header className="flex h-14 items-center gap-2 border-b border-border px-6">
               <span className="size-2.5 rounded-full bg-destructive" />
-              <span className="text-sm font-semibold tracking-tight">Ревью ТЗ</span>
+              <span className="text-sm font-semibold tracking-tight">SPEC CHECK PRO</span>
             </header>
             <section className="px-6 py-10">
               <p className="text-lg font-semibold">Новая проверка</p>

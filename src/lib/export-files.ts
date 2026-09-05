@@ -49,7 +49,8 @@ function clean(text: string): string {
 }
 
 function run(text: string, extra: ConstructorParameters<typeof TextRun>[0] = {}) {
-  return new TextRun({ text: clean(text), font: "Calibri", ...extra });
+  const safe = typeof extra === "object" && extra !== null ? (extra as object) : {};
+  return new TextRun({ text: clean(text), font: "Calibri", ...safe });
 }
 
 const cellBorder = {
@@ -161,7 +162,7 @@ function docxBody(blocks: Block[]): (Paragraph | Table)[] {
 export async function buildDocx(report: ExportReport): Promise<Buffer> {
   const blocks = reportBlocks(report);
   const doc = new Document({
-    creator: "Ревью ТЗ NET",
+    creator: "SPEC CHECK PRO",
     title: report.title,
     sections: [
       {
@@ -230,7 +231,7 @@ export function buildPdf(report: ExportReport): Promise<Buffer> {
     const doc = new PDFDocument({
       size: "A4",
       margins: { top: 56, bottom: 56, left: 56, right: 56 },
-      info: { Title: report.title, Author: "Ревью ТЗ NET" },
+      info: { Title: report.title, Author: "SPEC CHECK PRO" },
     });
     const chunks: Buffer[] = [];
     doc.on("data", (chunk: Buffer) => chunks.push(chunk));
