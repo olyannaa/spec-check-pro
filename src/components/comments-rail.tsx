@@ -111,7 +111,7 @@ function CommentCard({
       ) : (
         <p className="mt-3 inline-flex items-center gap-1 text-[12px] text-muted-foreground">
           <Link2Off className="size-3.5" />
-          В документе нет якоря — раздел отсутствует или цитата не нашлась
+          Общий комментарий — в тексте ТЗ нет конкретного фрагмента
         </p>
       )}
     </div>
@@ -156,13 +156,13 @@ export function CommentsRail({
           </div>
         ) : (
           <p className="px-1 text-[12px] text-muted-foreground">
-            Нет замечаний с местом в документе.
+            Нет комментариев к фрагментам текста.
           </p>
         )}
       </section>
       <section>
         <p className="mb-3 px-1 font-mono text-[11px] tracking-wide text-muted-foreground uppercase">
-          Без места в документе · {loose.length}
+          Общие комментарии · {loose.length}
         </p>
         {loose.length ? (
           <div className="space-y-3">
